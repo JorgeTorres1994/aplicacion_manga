@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "845848151713",
+    "project_id": "latin-manga",
+    "storage_bucket": "latin-manga.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:845848151713:android:af96b078ad30791c3e92e0",
+        "android_client_info": {
+          "package_name": "com.example.aplicacion_manga"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "845848151713-cuu907nssa3s5s44867npj50s5c6bsrg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aplicacion_manga",
+            "certificate_hash": "221e23e93fb8adce4e6f1cc728a1db06051cf72e"
+          }
+        },
+        {
+          "client_id": "845848151713-8psp8poqhs5l7l9trjcja8irm1uv847f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3O5JkZIcKuvZvbAorCFptAK-3F-lFczU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "845848151713-1eh7a701naa6c50sb1csb8a285sv2cau.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
