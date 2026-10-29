@@ -11,11 +11,11 @@ const kTextFieldColor = Color(0xFF979797);
 
 const kDefaultPadding = EdgeInsets.symmetric(horizontal: 30);
 
-TextStyle titleText =
-    TextStyle(color: kPrimaryColor, fontSize: 32, fontWeight: FontWeight.w700);
-TextStyle subTitle = TextStyle(
+TextStyle titleText = const TextStyle(
+    color: kPrimaryColor, fontSize: 32, fontWeight: FontWeight.w700);
+TextStyle subTitle = const TextStyle(
     color: kSecondaryColor, fontSize: 18, fontWeight: FontWeight.w500);
-TextStyle textButton = TextStyle(
+TextStyle textButton = const TextStyle(
   color: kPrimaryColor,
   fontSize: 18,
   fontWeight: FontWeight.w700,

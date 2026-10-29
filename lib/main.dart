@@ -16,9 +16,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:provider/provider.dart';
 
+import 'dart:io';
+
 import 'inner_screens/feed_screens.dart';
 
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
+
 void main() async {
+  HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await FlutterDownloader.initialize(); // Inicializar flutter_downloader
@@ -26,7 +38,7 @@ void main() async {
     ChangeNotifierProvider(
       create: (context) =>
           MangasModels(), // Aquí puedes inicializar la clase si es necesario
-      child: MainApp(),
+      child: const MainApp(),
     ),
   );
 }
@@ -59,20 +71,20 @@ class _MainAppState extends State<MainApp> {
         future: _fireBaseInitialization,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return MaterialApp(
+            return const MaterialApp(
               debugShowCheckedModeBanner: false,
-              home: Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(),
+              home: const Scaffold(
+                body: const Center(
+                  child: const CircularProgressIndicator(),
                 ),
               ),
             );
           } else if (snapshot.hasError) {
-            MaterialApp(
+            const MaterialApp(
               debugShowCheckedModeBanner: false,
-              home: Scaffold(
-                body: Center(
-                  child: Text('A ocurrido un error'),
+              home: const Scaffold(
+                body: const Center(
+                  child: const Text('A ocurrido un error'),
                 ),
               ),
             );
