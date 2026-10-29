@@ -163,7 +163,18 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
-                          child: Image.network('https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800', width: 36, height: 46, fit: BoxFit.cover),
+                          child: Image.asset(
+                            'images/admin_crops/berserk_red_art.png',
+                            width: 38,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => Container(
+                              width: 38,
+                              height: 48,
+                              color: KuroTheme.cardLighter,
+                              child: const Icon(Icons.book, color: KuroTheme.crimson),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -450,11 +461,11 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _buildThumbPage('https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800'),
+                      _buildThumbAsset('images/admin_crops/sample_page_1.png'),
                       const SizedBox(width: 8),
-                      _buildThumbPage('https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800'),
+                      _buildThumbAsset('images/admin_crops/sample_page_2.png'),
                       const SizedBox(width: 8),
-                      _buildThumbPage('https://e.rpp-noticias.io/xlarge/2018/11/22/484448_715070.jpg'),
+                      _buildThumbAsset('images/admin_crops/sample_page_3.png'),
                     ],
                   ),
                 ],
@@ -558,11 +569,21 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
     );
   }
 
-  Widget _buildThumbPage(String url) {
+  Widget _buildThumbAsset(String assetPath) {
     return Expanded(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: Image.network(url, height: 80, fit: BoxFit.cover),
+        child: AspectRatio(
+          aspectRatio: 1.0,
+          child: Image.asset(
+            assetPath,
+            fit: BoxFit.cover,
+            errorBuilder: (ctx, err, stack) => Container(
+              color: KuroTheme.cardLighter,
+              child: const Icon(Icons.broken_image, color: KuroTheme.textMuted, size: 16),
+            ),
+          ),
+        ),
       ),
     );
   }

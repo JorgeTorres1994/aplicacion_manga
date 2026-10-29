@@ -21,6 +21,7 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
       'badgeColor': KuroTheme.crimson,
       'user': 'griffith_stan',
       'lvl': 'LV.24',
+      'avatar': 'images/admin_crops/mod_user_1.png',
       'tag': '@falcon_eye • Clan Halcón • Hace 12m',
       'extraBadge': 'Reincidente 2x',
       'warning': 'TEXTO SIN MÁSCARA REVELADO',
@@ -34,6 +35,7 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
       'badgeColor': KuroTheme.crimson,
       'user': 'ronin_hater',
       'lvl': 'LV.08',
+      'avatar': 'images/admin_crops/mod_user_2.png',
       'tag': '@ronin_99 • Sin Clan • Hace 34m',
       'extraBadge': 'IA Flagged (0.94)',
       'warning': 'VIOLACIÓN TÉRMINOS COMUNIDAD',
@@ -47,6 +49,7 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
       'badgeColor': KuroTheme.purple,
       'user': 'free_manga_bot',
       'lvl': 'NUEVO',
+      'avatar': 'images/admin_crops/mod_user_3.png',
       'tag': '@scan_leak_hq • IP Sospechosa • Autoban Sugerido',
       'extraBadge': 'Autoban',
       'warning': 'ENLACE EXTERNO NO AUTORIZADO',
@@ -60,6 +63,7 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
       'badgeColor': KuroTheme.cardLighter,
       'user': 'Kenji_Otaku',
       'lvl': 'VIP III',
+      'avatar': 'images/admin_crops/mod_user_4.png',
       'tag': '@kenji99 • Clan Sombra • Hace 2h',
       'extraBadge': 'Sin Infracciones',
       'warning': 'REPORTADO POR TONO CRÍTICO',
@@ -307,11 +311,20 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
             decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(6)),
             child: Row(
               children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
-                  child: const Center(child: Text('!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    rep['avatar'] as String,
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => Container(
+                      width: 24,
+                      height: 24,
+                      decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
+                      child: const Center(child: Text('!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(

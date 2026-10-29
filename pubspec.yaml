@@ -105,6 +105,7 @@ flutter:
 
   assets:
     - images/
+    - images/admin_crops/
     - images/mangas/shonen/
     - images/mangas/romance/
     - images/mangas/gore/

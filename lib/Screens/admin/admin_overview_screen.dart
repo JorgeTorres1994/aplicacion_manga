@@ -218,15 +218,11 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                           chipColor: KuroTheme.cyan,
                           mainNumber: '48.2k',
                           subText: 'Concurrencia viva hoy',
-                          indicator: Container(
-                            height: 18,
-                            alignment: Alignment.bottomLeft,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                    child: Container(
-                                        height: 2, color: KuroTheme.cyan)),
-                              ],
+                          indicator: SizedBox(
+                            height: 24,
+                            width: double.infinity,
+                            child: CustomPaint(
+                              painter: _CyanAreaChartPainter(),
                             ),
                           ),
                         ),
@@ -238,16 +234,44 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                           chipColor: Colors.white,
                           mainNumber: '1,420',
                           subText: '980 curso // 440 fin',
-                          indicator: Row(
+                          indicator: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                  flex: 69,
-                                  child: Container(
-                                      height: 3, color: KuroTheme.crimson)),
-                              Expanded(
-                                  flex: 31,
-                                  child: Container(
-                                      height: 3, color: KuroTheme.purple)),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                        flex: 69,
+                                        child: Container(
+                                            height: 4, color: KuroTheme.crimson)),
+                                    Expanded(
+                                        flex: 31,
+                                        child: Container(
+                                            height: 4, color: KuroTheme.purple)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('69%', style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                                      Text('ACTIVO', style: KuroTheme.mono(fontSize: 7, color: KuroTheme.textMuted)),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('31%', style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                                      Text('ARCHIVADO', style: KuroTheme.mono(fontSize: 7, color: KuroTheme.textMuted)),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -530,11 +554,17 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(6),
-                                child: Image.network(
-                                  'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
-                                  width: 46,
-                                  height: 60,
+                                child: Image.asset(
+                                  'images/admin_crops/berserk_crop.png',
+                                  width: 48,
+                                  height: 64,
                                   fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => Container(
+                                    width: 48,
+                                    height: 64,
+                                    color: KuroTheme.cardLighter,
+                                    child: const Icon(Icons.book, color: KuroTheme.crimson),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -777,4 +807,44 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
       ),
     );
   }
+}
+
+class _CyanAreaChartPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokePaint = Paint()
+      ..color = KuroTheme.cyan
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          KuroTheme.cyan.withValues(alpha: 0.35),
+          KuroTheme.cyan.withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(0, size.height * 0.85);
+    path.cubicTo(
+      size.width * 0.35, size.height * 0.75,
+      size.width * 0.65, size.height * 0.30,
+      size.width, size.height * 0.15,
+    );
+
+    final fillPath = Path.from(path)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas.drawPath(fillPath, fillPaint);
+    canvas.drawPath(path, strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
