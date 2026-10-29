@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
-  ForgotPasswordPage({super.key});
+  const ForgotPasswordPage({super.key});
 
   @override
   State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
@@ -27,8 +27,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       showDialog(
           context: context,
           builder: (context) {
-            return AlertDialog(
-              content: Text(
+            return const AlertDialog(
+              content: const Text(
                   '¡El link para resear tu contraseña fue enviado!, revisa tu correo'),
             );
           });
@@ -37,11 +37,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       showDialog(
           context: context,
           builder: (context) {
-            return AlertDialog(
+            return const AlertDialog(
               /*content: Text(
                 e.message.toString(),
               ),*/
-              content: Text(
+              content: const Text(
                 '¡El correo no existe!, no se pudo restaurar la contraseña',
               ),
             );
@@ -49,6 +49,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     }
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
@@ -67,13 +68,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               itemCount: Constss.authImagesPaths2.length,
             ),
             Container(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
             ),
             SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     height: 30,
                   ),
                   //buildIndicator(),
@@ -94,7 +95,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     isTitle: true,
                   ),
 
-                  SizedBox(
+                  const SizedBox(
                     height: 40,
                   ),
                   /*Row(
@@ -122,7 +123,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     isTitle: true,
                   ),
 
-                  SizedBox(
+                  const SizedBox(
                     height: 160,
                   ),
 
@@ -132,7 +133,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     obscureText: false,
                   ),
 
-                  SizedBox(
+                  const SizedBox(
                     height: 120,
                   ),
 
@@ -149,8 +150,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
                   Container(
                     alignment: Alignment.bottomCenter,
-                    padding: EdgeInsets.only(left: 20, bottom: 20),
+                    padding: const EdgeInsets.only(left: 20, bottom: 20),
                     child: MaterialButton(
+                      color: Colors.green,
+                      height: 50, // Ajustar el tamaño del botón
+                      onPressed: () {
+                        passwordReset();
+                      },
                       child: Text(
                         'Enviar enlace',
                         style: TextStyle(
@@ -158,24 +164,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           fontSize: 20, // Tamaño de fuente del texto del botón
                         ),
                       ),
-                      color: Colors.green,
-                      height: 50, // Ajustar el tamaño del botón
-                      onPressed: () {
-                        passwordReset();
-                      },
                     ),
                   ),
 
-                  SizedBox(
+                  const SizedBox(
                     height: 30,
                   ),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         '¿Quieres retroceder?',
-                        style: TextStyle(color: Colors.white),
+                        style: const TextStyle(color: Colors.white),
                       ),
                       const SizedBox(height: 4),
                       GestureDetector(

@@ -1,97 +1,200 @@
 import 'package:aplicacion_manga/Screens/forgot_password_page.dart';
-import 'package:aplicacion_manga/Screens/loading_manager.dart';
 import 'package:aplicacion_manga/Screens/register_page.dart';
 import 'package:aplicacion_manga/fetch_screen.dart';
-import 'package:aplicacion_manga/provider/dark_theme_provider.dart';
-import 'package:aplicacion_manga/widgets/primary_button.dart';
-import 'package:aplicacion_manga/widgets/textos_widget.dart';
-import 'package:carousel_slider/carousel_slider.dart';
+import 'package:aplicacion_manga/theme/kuro_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:provider/provider.dart';
-
-import '../otros componentes/theme.dart';
-import '../widgets/login_form.dart';
-
-final images = [
-  "https://img.europapress.es/fotoweb/fotonoticia_20180210183601_1200.jpg",
-  "https://cdn.atomix.vg/wp-content/uploads/2022/04/New-Project-58.jpg",
-  "https://guiltybit.com/wp-content/uploads/2022/07/Son-Gohan-Dragon-Ball.webp",
-  "https://cdn.shopify.com/s/files/1/0399/1833/8203/files/broly-dragon-ball_2048x2048.jpg?v=1616868885",
-  "https://e.rpp-noticias.io/xlarge/2018/11/22/484448_715070.jpg",
-];
-
-int activeIndex = 0;
 
 class LoginPage extends StatefulWidget {
-  //static const routeName = "/LoginScreenState"; //ruta de la interfaz
-  LoginPage({super.key});
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  //Textos a ingresar (correo y contraseña)
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   bool validarCampos() {
     if (emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('Campos vacíos'),
-            content: Text('Por favor, ingresa tu correo y contraseña.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('Aceptar'),
-              ),
-            ],
-          );
-        },
-      );
+      showErrorDialog('Por favor, ingresa tu correo y contraseña.');
       return false;
     }
     return true;
   }
 
+  void showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: KuroTheme.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: KuroTheme.border),
+          ),
+          title: Text(
+            'AVISO DE SISTEMA',
+            style: KuroTheme.mono(color: KuroTheme.crimson, fontSize: 13),
+          ),
+          content: Text(
+            message,
+            style: KuroTheme.body(color: KuroTheme.textWhite, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'ENTENDIDO',
+                style: KuroTheme.mono(color: KuroTheme.crimson, fontSize: 12),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void loguearUsuario() async {
+    if (!validarCampos()) return;
+
     try {
-      //AUTENTICACION DE CORREO Y CONTRAÑA
+      setState(() {
+        _isLoading = true;
+      });
+
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
+
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (ctx) => const FetchScreen(),
       ));
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      String errorMsg;
       if (e.code == 'user-not-found') {
-        //ERROR EN EL CORREO
-        errorEmailMessage();
-      } else if (e.code == 'wrong-password') {
-        //ERROR EN LA CONTRASEÑA
-        errorPasswordMessage();
+        errorMsg = 'El correo no se encuentra registrado en Kuro.';
+      } else if (e.code == 'wrong-password' ||
+          e.code == 'invalid-credential') {
+        errorMsg = 'Contraseña o credenciales incorrectas.';
+      } else if (e.code == 'invalid-email') {
+        errorMsg = 'El formato de correo no es válido.';
+      } else {
+        errorMsg = e.message ?? 'Error de autenticación (${e.code})';
       }
+      showErrorDialog(errorMsg);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      showErrorDialog('Error: $e');
+    }
+  }
+
+  Future<void> _autofillAndLogin({
+    required String email,
+    required String password,
+    required bool isAdmin,
+  }) async {
+    emailController.text = email;
+    passwordController.text = password;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+          final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+          final user = credential.user;
+          if (user != null) {
+            await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+              'userId': user.uid,
+              'usuario': isAdmin ? 'Kuro_Root' : 'Ren Takahashi',
+              'correo': email,
+              'celular': isAdmin ? '+51 987654321' : '+51 952336505',
+              'clan': 'Carmesí',
+              'rango': isAdmin ? 'ROOT ADMIN' : 'VETERANO',
+              'nivel': isAdmin ? 99 : 42,
+              'rol': isAdmin ? 'admin' : 'reader',
+              'fecha_registro': FieldValue.serverTimestamp(),
+            });
+          }
+        } else {
+          rethrow;
+        }
+      }
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).set({
+          'userId': currentUser.uid,
+          'usuario': isAdmin ? 'Kuro_Root' : 'Ren Takahashi',
+          'correo': email,
+          'celular': isAdmin ? '+51 987654321' : '+51 952336505',
+          'clan': 'Carmesí',
+          'rango': isAdmin ? 'ROOT ADMIN' : 'VETERANO',
+          'nivel': isAdmin ? 99 : 42,
+          'rol': isAdmin ? 'admin' : 'reader',
+        }, SetOptions(merge: true));
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (ctx) => const FetchScreen(),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      showErrorDialog('Error al conectar credenciales: $e');
     }
   }
 
   void autenticacionGoogle() async {
     try {
-      print('Llamada Autenticacion con Google');
-      FirebaseAuth auth = FirebaseAuth.instance;
-      User? user;
+      setState(() {
+        _isLoading = true;
+      });
 
       final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleSignInAccount =
@@ -102,291 +205,612 @@ class _LoginPageState extends State<LoginPage> {
             await googleSignInAccount.authentication;
 
         final AuthCredential credential = GoogleAuthProvider.credential(
-            accessToken: googleSignInAuthentication.accessToken,
-            idToken: googleSignInAuthentication.idToken);
+          accessToken: googleSignInAuthentication.accessToken,
+          idToken: googleSignInAuthentication.idToken,
+        );
 
-        try {
-          final UserCredential userCredential =
-              await auth.signInWithCredential(credential);
-          user = userCredential.user;
-        } on FirebaseAuthException catch (e) {
-          print(e);
-        } catch (e) {
-          print(e);
+        final UserCredential userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
+
+        if (userCredential.user != null) {
+          if (!mounted) return;
+          setState(() {
+            _isLoading = false;
+          });
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (ctx) => const FetchScreen(),
+          ));
         }
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      print(e);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      showErrorDialog(
+        e.toString().contains('ApiException: 10')
+            ? 'Error de configuración (ApiException: 10): Recuerda registrar la clave SHA-1 en la consola de Firebase.'
+            : 'No se pudo iniciar con Google: $e',
+      );
     }
-  }
-
-  void errorEmailMessage() {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return const AlertDialog(
-            title: Text('Correo incorrecto y/o no registrado'),
-          );
-        });
-  }
-
-  void errorPasswordMessage() {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return const AlertDialog(
-            title: Text('Contraseña incorrecta y/o no registrada'),
-          );
-        });
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeState = Provider.of<DarkThemeProvider>(context);
-    final Color color = themeState.getDarkTheme ? Colors.white : Colors.black;
-    //bool _isLoading = false;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-        body: LoadingManager(
-      isLoading: _isLoading,
-      child: Padding(
-        padding: kDefaultPadding,
+      backgroundColor: KuroTheme.background,
+      body: SafeArea(
         child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 20,
-              ),
-              CarouselSlider.builder(
-                options: CarouselOptions(
-                    height: 180,
-                    autoPlay: true,
-                    enlargeCenterPage: true,
-                    autoPlayInterval: Duration(seconds: 2)),
-                itemCount: images.length,
-                itemBuilder: (context, index, realIndex) {
-                  final urlImage = images[index];
-                  return buildImage(urlImage, index);
-                },
-              ),
-              SizedBox(
-                height: 10,
-              ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: size.height - MediaQuery.of(context).padding.top - 32,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 12),
 
-              Center(
-                child: /*Text(
-                  'LATIN MANGA',
-                  style: titleText,
-                ),*/
-                    TextosWidget(
-                  text: 'LATIN MANGA',
-                  color: color,
-                  textSize: 32,
-                  isTitle: true,
-                ),
-              ),
-              SizedBox(
-                height: 10,
-              ),
-
-              SizedBox(
-                height: 5,
-              ),
-
-              LogInForm(
-                controller: emailController,
-                hintText: 'Correo',
-                obscureText: false,
-              ),
-
-              SizedBox(
-                height: 20,
-              ),
-              LogInForm(
-                controller: passwordController,
-                hintText: 'Contraseña',
-                obscureText: true,
-              ),
-              SizedBox(
-                height: 20,
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) {
-                          return ForgotPasswordPage();
-                        }));
-                      },
-                      child: Text(
-                        '¿Olvidaste tu contraseña?',
-                        //style: TextStyle(color: Colors.grey[600]),
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
+                // Top emblem + VOL.01 badge
+                Center(
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          color: KuroTheme.card,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: KuroTheme.border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: KuroTheme.crimson.withValues(alpha: 0.15),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.auto_awesome,
+                            color: KuroTheme.crimson,
+                            size: 26,
+                          ),
                         ),
                       ),
-                    )
-                  ],
-                ),
-              ),
-
-              SizedBox(
-                height: 20,
-              ),
-
-              GestureDetector(
-                child: PrimaryButton(
-                  text: 'Ingresar',
-                  onTap: () {
-                    if (validarCampos()) {
-                      loguearUsuario();
-                    }
-                  },
-                ),
-              ),
-              SizedBox(
-                height: 20,
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        thickness: 0.5,
-                        color: Colors.grey[400],
+                      Positioned(
+                        top: -10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: KuroTheme.crimson,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'VOL.01',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        'O ingresa con',
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        thickness: 0.5,
-                        color: Colors.grey[400],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              SizedBox(
-                height: 20,
-              ),
+                const SizedBox(height: 20),
 
-              //BOTONES PARA ACCEDER POR FACEBOOK Y GOOGLE
+                // KURO / 黒 Logo
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'KURO ',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '/ ',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: KuroTheme.crimson,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '黒',
+                        style: GoogleFonts.notoSansJp(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: KuroTheme.crimson,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-              /*BotonesRedesSociales(
-                    onTap: () {},
-                    imagePath: 'iconos/facebook.png',
-                  ),*/
-              SizedBox(
-                width: 25,
-              ),
-              InkWell(
-                onTap: () {
-                  autenticacionGoogle();
-                },
-                child: Ink(
-                  child: Padding(
-                    padding: EdgeInsets.all(10),
-                    child: Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                const SizedBox(height: 4),
+
+                Text(
+                  'MANGA READER & ANIME',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: KuroTheme.textMuted,
+                    letterSpacing: 3.5,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Sincronización Activa chip
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: KuroTheme.card,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: KuroTheme.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset(
-                          'iconos/google.png',
-                          height: 40,
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: KuroTheme.crimson,
+                            shape: BoxShape.circle,
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
-                          'Ingresar con Google',
-                          style: TextStyle(
-                            color: Colors.white,
+                          'SINCRONIZACIÓN ACTIVA',
+                          style: GoogleFonts.jetBrainsMono(
                             fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
+                            color: KuroTheme.textGrey,
+                            letterSpacing: 0.8,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-              /*BotonesRedesSociales(
-                    onTap: () => AuthGoogleService().sigInWithGoogle(),
-                    imagePath: 'iconos/google.png',
-                  ),*/
 
-              SizedBox(
-                height: 20,
-              ),
+                const SizedBox(height: 12),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                // Iniciar Sesión Title
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Iniciar Sesión',
+                    style: KuroTheme.title(fontSize: 26),
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Accede a tu biblioteca sincronizada y lanzamientos exclusivos.',
+                    style: KuroTheme.body(
+                      color: KuroTheme.textGrey,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Campo IDENTIFICADOR / EMAIL
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '¿No tienes cuenta?',
-                      style: TextStyle(color: Colors.grey[700]),
+                      'CORREO ELECTRÓNICO',
+                      style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textWhite,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) {
-                          return RegisterPage();
-                        }));
-                      },
-                      child: const Text(
-                        '¡Regístrate!',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
+                    Text(
+                      'ID DE LECTOR',
+                      style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 52,
+                  decoration: KuroTheme.cardDecoration(),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      Icon(Icons.mail_outline,
+                          color: KuroTheme.textMuted, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          style: KuroTheme.body(
+                              color: KuroTheme.textWhite, fontSize: 14),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'usuario@dominio.com',
+                            hintStyle: KuroTheme.body(
+                              color: KuroTheme.textMuted,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Campo CLAVE DE ACCESO
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'CONTRASEÑA',
+                      style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textWhite,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'PROTEGIDA',
+                      style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 52,
+                  decoration: KuroTheme.cardDecoration(),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline,
+                          color: KuroTheme.textMuted, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: passwordController,
+                          obscureText: _obscurePassword,
+                          style: KuroTheme.body(
+                              color: KuroTheme.textWhite, fontSize: 14),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: '•••••••••••••',
+                            hintStyle: KuroTheme.body(
+                              color: KuroTheme.textMuted,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: KuroTheme.textMuted,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // ¿Olvidaste tu contraseña?
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) {
+                        return const ForgotPasswordPage();
+                      }));
+                    },
+                    child: Text(
+                      '¿Olvidaste tu contraseña?',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        color: KuroTheme.textGrey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Accesos Rápidos Demo Firebase (Admin & Lector)
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _autofillAndLogin(
+                          email: 'admin@kuro.manga',
+                          password: 'Admin123456*',
+                          isAdmin: true,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: KuroTheme.purple.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: KuroTheme.purple.withValues(alpha: 0.5)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.shield, color: KuroTheme.purple, size: 14),
+                              const SizedBox(width: 6),
+                              Text('ADMIN DEMO', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _autofillAndLogin(
+                          email: 'lector@kuro.manga',
+                          password: 'Lector123456*',
+                          isAdmin: false,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: KuroTheme.cyan.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: KuroTheme.cyan.withValues(alpha: 0.5)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.menu_book, color: KuroTheme.cyan, size: 14),
+                              const SizedBox(width: 6),
+                              Text('LECTOR DEMO', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              SizedBox(
-                height: 30,
-              ),
-              //TEMA OSCURO DE PANTALLA
-              SwitchListTile(
-                title: Text('Theme'),
-                secondary: Icon(themeState.getDarkTheme
-                    ? Icons.dark_mode_outlined
-                    : Icons.light_mode_outlined),
-                onChanged: (bool value) {
-                  setState(() {
-                    themeState.setDarkTheme = value;
-                  });
-                },
-                value: themeState.getDarkTheme,
-              ),
-            ],
+
+                const SizedBox(height: 16),
+
+                // Botón INICIAR SESIÓN
+                KuroTheme.primaryButton(
+                  text: 'INICIAR SESIÓN',
+                  icon: Icons.arrow_forward,
+                  isLoading: _isLoading,
+                  onTap: loguearUsuario,
+                ),
+
+                const SizedBox(height: 20),
+
+                // Divider O CONTINÚA CON
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: KuroTheme.border,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'O CONTINÚA CON',
+                        style: KuroTheme.mono(
+                          fontSize: 9.5,
+                          color: KuroTheme.textMuted,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: KuroTheme.border,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Botón Continuar con Google
+                Container(
+                  width: double.infinity,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: KuroTheme.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: KuroTheme.border),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: autenticacionGoogle,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'iconos/google.png',
+                            height: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Continuar con Google',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: KuroTheme.textWhite,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Card ÚLTIMO CAPÍTULO
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: KuroTheme.cardDecoration(
+                    color: KuroTheme.card.withValues(alpha: 0.6),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: KuroTheme.cardLighter,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.menu_book,
+                          color: KuroTheme.crimson,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ÚLTIMO CAPÍTULO',
+                              style: KuroTheme.mono(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: KuroTheme.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Cap. 84 - Nocturno en Shin...',
+                              style: KuroTheme.body(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: KuroTheme.textWhite,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'LEÍDO 92%',
+                        style: KuroTheme.mono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: KuroTheme.crimson,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Footer: ¿No tienes una cuenta? Regístrate
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '¿No tienes una cuenta? ',
+                      style: KuroTheme.body(
+                        color: KuroTheme.textGrey,
+                        fontSize: 13,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return const RegisterPage();
+                        }));
+                      },
+                      child: Text(
+                        'Regístrate',
+                        style: GoogleFonts.spaceGrotesk(
+                          color: KuroTheme.crimson,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Términos • Privacidad • v2.4.0-JP
+                Text(
+                  'Términos   •   Privacidad   •   v2.4.0-JP',
+                  style: KuroTheme.mono(
+                    fontSize: 9.5,
+                    color: KuroTheme.textMuted,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
           ),
         ),
       ),
-    ));
+    );
   }
-
-  Widget buildImage(String urlImage, int index) => Container(
-        margin: EdgeInsets.symmetric(horizontal: 12),
-        child: Image.network(
-          urlImage,
-          fit: BoxFit.cover,
-        ),
-      );
 }
