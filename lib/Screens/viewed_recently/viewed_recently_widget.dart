@@ -31,10 +31,10 @@ class _ViewedRecentlyWidgetState extends State<ViewedRecentlyWidget> {
     Color color = Utils(context).color;
     Size size = Utils(context).getScreenSize;
     final wishListProvider = Provider.of<WishListProvider>(context);
-    bool? _isWishList =
+    bool? isWishList =
         wishListProvider.getWishListItems.containsKey(getCurrManga.id);
     return Padding(
-      padding: EdgeInsets.all(4.0),
+      padding: const EdgeInsets.all(4.0),
       child: GestureDetector(
         onTap: () {
           Navigator.pushNamed(
@@ -55,7 +55,7 @@ class _ViewedRecentlyWidgetState extends State<ViewedRecentlyWidget> {
               Flexible(
                 flex: 3,
                 child: Container(
-                  margin: EdgeInsets.only(left: 8),
+                  margin: const EdgeInsets.only(left: 8),
                   height: size.width * 0.3,
                   //width: size.width * 0.2,
                   child: FancyShimmerImage(
@@ -84,7 +84,7 @@ class _ViewedRecentlyWidgetState extends State<ViewedRecentlyWidget> {
                           ),
                           HearthButton(
                             mangaId: getCurrManga.id,
-                            isWishList: _isWishList,
+                            isWishList: isWishList,
                           ),
                         ],
                       ),

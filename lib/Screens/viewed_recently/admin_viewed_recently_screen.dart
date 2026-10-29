@@ -34,7 +34,7 @@ class _AdminViewedRecentlyScreenState extends State<AdminViewedRecentlyScreen> {
         .reversed
         .toList();
     if (viewedMangatemsList.isEmpty) {
-      return EmptyScreen(
+      return const EmptyScreen(
         title: 'Tu historial está vacío',
         subtitle: 'No hay mangas vistos!',
         buttonText: 'Ver ahora',
@@ -44,7 +44,7 @@ class _AdminViewedRecentlyScreenState extends State<AdminViewedRecentlyScreen> {
       return Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          leading: BackWidget(),
+          leading: const BackWidget(),
           automaticallyImplyLeading: false,
           elevation: 0,
           actions: [
@@ -68,7 +68,7 @@ class _AdminViewedRecentlyScreenState extends State<AdminViewedRecentlyScreen> {
             textSize: 24.0,
           ),
           backgroundColor:
-              Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+              Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),
         ),
         body: MasonryGridView.count(
           itemCount: viewedMangatemsList.length,
