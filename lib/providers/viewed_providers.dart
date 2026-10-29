@@ -2,7 +2,7 @@ import 'package:aplicacion_manga/models/viewed_models.dart';
 import 'package:flutter/cupertino.dart';
 
 class ViewedMangaProvider with ChangeNotifier {
-  Map<String, ViewedMangaModels> _viewedMangasListItems = {};
+  final Map<String, ViewedMangaModels> _viewedMangasListItems = {};
 
   Map<String, ViewedMangaModels> get getViewedMangasListItems {
     return _viewedMangasListItems;

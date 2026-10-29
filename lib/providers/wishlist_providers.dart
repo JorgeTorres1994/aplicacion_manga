@@ -2,7 +2,7 @@ import 'package:aplicacion_manga/models/wishlist_models.dart';
 import 'package:flutter/cupertino.dart';
 
 class WishListProvider with ChangeNotifier {
-  Map<String, WishListModels> _wishListItems = {};
+  final Map<String, WishListModels> _wishListItems = {};
 
   Map<String, WishListModels> get getWishListItems {
     return _wishListItems;

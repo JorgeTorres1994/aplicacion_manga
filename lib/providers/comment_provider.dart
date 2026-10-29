@@ -47,7 +47,7 @@ class CommentProvider extends ChangeNotifier {
   String getCommentIdAtIndex(int index) {
     if (index >= 0 && index < _comments.length) {
       final comment = _comments[index];
-      if (comment != null && comment.containsKey('commentId')) {
+      if (comment.containsKey('commentId')) {
         return comment['commentId'] as String;
       }
     }

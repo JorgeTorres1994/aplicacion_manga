@@ -27,7 +27,7 @@ class EmptyScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
+              const SizedBox(
                 height: 25,
               ),
               Image.asset(
@@ -35,12 +35,12 @@ class EmptyScreen extends StatelessWidget {
                 width: double.infinity,
                 height: size.height * 0.4,
               ),
-              SizedBox(
+              const SizedBox(
                 height: 10,
               ),
-              Text(
+              const Text(
                 'Ups...',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.redAccent,
                   fontSize: 40,
                   fontWeight: FontWeight.w700,
@@ -63,7 +63,7 @@ class EmptyScreen extends StatelessWidget {
                         //color: Theme.of(context).colorScheme.secondary,
                         color: color,
                       )),
-                  primary: Theme.of(context).colorScheme.secondary,
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
                   //onPrimary: color,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 50, vertical: 20),

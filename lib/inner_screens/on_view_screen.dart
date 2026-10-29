@@ -19,10 +19,10 @@ class OnViewScreen extends StatelessWidget {
     final Color color = Utils(context).color;
     final mangasProvider = Provider.of<MangasProvider>(context);
     List<MangasModels> allMangas = mangasProvider.getMangas;
-    bool _isEmpty = allMangas.isEmpty; // Verificar si la lista está vacía
+    bool isEmpty = allMangas.isEmpty; // Verificar si la lista está vacía
     return Scaffold(
       appBar: AppBar(
-        leading: BackWidget(),
+        leading: const BackWidget(),
         elevation: 0,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         title: TextosWidget(
@@ -32,8 +32,8 @@ class OnViewScreen extends StatelessWidget {
           isTitle: true,
         ),
       ),
-      body: _isEmpty
-          ? EmptyMangaWidget(
+      body: isEmpty
+          ? const EmptyMangaWidget(
               text: 'Aún no hay mangas vistos',
             )
           : GridView.count(

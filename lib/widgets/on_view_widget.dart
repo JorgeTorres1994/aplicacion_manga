@@ -25,7 +25,7 @@ class _OnViewWidgetState extends State<OnViewWidget> {
     //final theme = Utils(context).getTheme;
     Size size = Utils(context).getScreenSize;
     final wishListProvider = Provider.of<WishListProvider>(context);
-    bool? _isWishList =
+    bool? isWishList =
         wishListProvider.getWishListItems.containsKey(mangaModel.id);
 
     return Center(
@@ -33,7 +33,7 @@ class _OnViewWidgetState extends State<OnViewWidget> {
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Material(
-          color: Theme.of(context).cardColor.withOpacity(0.9),
+          color: Theme.of(context).cardColor.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
@@ -64,7 +64,7 @@ class _OnViewWidgetState extends State<OnViewWidget> {
                         ),
                       ],
                     ),
-                    SizedBox(
+                    const SizedBox(
                         height:
                             8), // Agregar un espacio entre la imagen y el título
                     TextosWidget(
@@ -73,13 +73,13 @@ class _OnViewWidgetState extends State<OnViewWidget> {
                       textSize: 22,
                       isTitle: true,
                     ),
-                    SizedBox(
+                    const SizedBox(
                         height:
                             8), // Agregar un espacio entre el título y el icono
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       // Centramos horizontalmente los elementos del Row
-                      children: [
+                      children: const [
                         /*GestureDetector(
                           onTap: () {},
                           child: Icon(

@@ -17,7 +17,7 @@ class FeedScreens extends StatefulWidget {
 }
 
 class _FeedScreensState extends State<FeedScreens> {
-  final TextEditingController? _searchTextController = TextEditingController();
+  final TextEditingController _searchTextController = TextEditingController();
   final FocusNode _searchTextFocusNode = FocusNode();
   /*@override
   void dispose() {
@@ -47,7 +47,7 @@ class _FeedScreensState extends State<FeedScreens> {
     List<MangasModels> allMangas = mangasProvider.getMangas;
     return Scaffold(
         appBar: AppBar(
-          leading: BackWidget(),
+          leading: const BackWidget(),
           elevation: 0,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           centerTitle: true,
@@ -85,7 +85,7 @@ class _FeedScreensState extends State<FeedScreens> {
                               color: Colors.greenAccent, width: 1),
                         ),
                         hintText: '¿Qué manga te apetece ver?',
-                        prefixIcon: Icon(Icons.search),
+                        prefixIcon: const Icon(Icons.search),
                         suffix: IconButton(
                           onPressed: () {
                             _searchTextController!.clear();

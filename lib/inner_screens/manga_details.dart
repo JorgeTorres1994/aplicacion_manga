@@ -1,26 +1,20 @@
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
-import 'package:aplicacion_manga/models/detalle_puntuacion_model.dart';
-import 'package:aplicacion_manga/providers/comment_provider.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
 import 'package:aplicacion_manga/providers/viewed_providers.dart';
 import 'package:aplicacion_manga/providers/wishlist_providers.dart';
-import 'package:aplicacion_manga/services/utils.dart';
-import 'package:aplicacion_manga/widgets/textos_widget.dart';
+import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fancy_shimmer_image/fancy_shimmer_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
-import 'package:flutter_iconly/flutter_iconly.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 class MangaDetails extends StatefulWidget {
-  //static const routeName = '/ProductDetails';
   static const routeName = '/MangaDetails';
-
   const MangaDetails({Key? key}) : super(key: key);
 
   @override
@@ -28,679 +22,969 @@ class MangaDetails extends StatefulWidget {
 }
 
 class _MangaDetailsState extends State<MangaDetails> {
-  TextEditingController _commentController = TextEditingController();
-  List<Map<String, dynamic>> _comments = [];
-  bool _isContentLoaded =
-      false; // Agregamos una variable para controlar la carga de contenido
-  double _userRating = 0.0;
-
-  void _downloadPDF(String pdfUrl, String title) async {
-    try {
-      final taskId = await FlutterDownloader.enqueue(
-        url: pdfUrl,
-        savedDir: '/storage/emulated/0/Download/', // Directorio de descarga
-        fileName: '$title.pdf', // Nombre del archivo
-        showNotification: true,
-        openFileFromNotification: true,
-      );
-      print('Tarea de descarga iniciada: $taskId');
-      Fluttertoast.showToast(
-        msg: 'El manga $title fue descargado con éxito.',
-        gravity: ToastGravity.BOTTOM, // Puedes ajustar la posición del mensaje
-        toastLength:
-            Toast.LENGTH_SHORT, // Puedes ajustar la duración del mensaje
-      );
-    } catch (error) {
-      print('Error al iniciar la descarga: $error');
-    }
-  }
-
-  void _submitComment() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final commentContent = _commentController.text;
-      final mangaId = ModalRoute.of(context)!.settings.arguments as String;
-      final userDocRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid);
-      final commentData = {
-        'contenido': commentContent,
-        'usuarioId': user.uid,
-        'usuarioDocRef':
-            userDocRef, // Guardar la referencia al documento de usuario
-        'mangaId': mangaId,
-        'fecha': DateTime.now().toString(),
-      };
-
-      // Acceder al Provider de comentarios
-      final commentProvider =
-          Provider.of<CommentProvider>(context, listen: false);
-
-      // Generar un ID único para el comentario
-      final commentId =
-          FirebaseFirestore.instance.collection('comments').doc().id;
-
-      // Agregar el comentario al Provider
-      commentProvider.addComment(commentData, commentId);
-
-      // Guardar el comentario en Firestore en la colección "comments"
-      final commentsRef = FirebaseFirestore.instance.collection('comments');
-      await commentsRef.doc(commentId).set(commentData);
-
-      setState(() {
-        _comments.add(commentData); // Agregar el comentario a la lista
-        _commentController.clear();
-      });
-    }
-  }
-
-  /*void initState() {
-    super.initState();
-    final commentProvider =
-        Provider.of<CommentProvider>(context, listen: false);
-    //commentProvider.fetchCommentsFromFirebase();
-    commentProvider.fetchCommentsFromFirebase().then((_) {
-      setState(() {
-        _isContentLoaded = true; // Marcamos que el contenido se ha cargado
-      });
-    });
-    // Asegúrate de que el manga esté disponible antes de intentar acceder a sus propiedades
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final mangasProvider =
-          Provider.of<MangasProvider>(context, listen: false);
-      final mangaId = ModalRoute.of(context)!.settings.arguments as String;
-      final getCurrManga = mangasProvider.findMangabyId(mangaId);
-      if (getCurrManga != null) {
-        // Aquí puedes inicializar _userRating si el manga está disponible
-        setState(() {
-          _userRating = getCurrManga.rating ?? 0.0;
-        });
-      }
-    });
-  }*/
-
-  void initState() {
-    super.initState();
-    final commentProvider =
-        Provider.of<CommentProvider>(context, listen: false);
-    //commentProvider.fetchCommentsFromFirebase();
-    commentProvider.fetchCommentsFromFirebase().then((_) {
-      setState(() {
-        _isContentLoaded = true; // Marcamos que el contenido se ha cargado
-      });
-    });
-    final mangasProvider = Provider.of<MangasProvider>(context, listen: false);
-
-    WidgetsBinding.instance?.addPostFrameCallback((_) async {
-      final mangaId = ModalRoute.of(context)!.settings.arguments as String;
-      final getCurrManga = mangasProvider.findMangabyId(mangaId);
-
-      if (getCurrManga != null) {
-        // Obtén el rating del manga
-        final detallePuntuacionRef =
-            FirebaseFirestore.instance.collection('detalle_puntuacion');
-        final userUid = FirebaseAuth.instance.currentUser?.uid;
-
-        if (userUid != null) {
-          final detallePuntuacionQuery = await detallePuntuacionRef
-              .where('idUsuario', isEqualTo: userUid)
-              .where('idManga', isEqualTo: mangaId)
-              .limit(1)
-              .get();
-
-          if (detallePuntuacionQuery.docs.isNotEmpty) {
-            final detallePuntuacionDoc = detallePuntuacionQuery.docs.first;
-            final userRating = detallePuntuacionDoc['rating'] ?? 0.0;
-
-            // Actualiza el rating en el estado
-            setState(() {
-              _userRating = userRating;
-            });
-          }
-        }
-      }
-    });
-  }
+  final TextEditingController _commentController = TextEditingController();
+  final List<Map<String, dynamic>> _comments = [];
+  bool _isExpandedSynopsis = false;
+  int _selectedTab = 0; // 0: Capítulos, 1: Tomos, 2: Comunidad
+  double _userRating = 5.0;
 
   @override
   void dispose() {
-    _commentController.dispose(); // Liberar recursos del controlador
+    _commentController.dispose();
     super.dispose();
+  }
+
+  void _downloadPDF(String pdfUrl, String title) async {
+    try {
+      await Permission.storage.request();
+      await FlutterDownloader.enqueue(
+        url: pdfUrl.isNotEmpty ? pdfUrl : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        savedDir: '/storage/emulated/0/Download/',
+        fileName: '$title.pdf',
+        showNotification: true,
+        openFileFromNotification: true,
+      );
+      Fluttertoast.showToast(
+        msg: 'Iniciando descarga de $title...',
+        backgroundColor: KuroTheme.crimson,
+        textColor: Colors.white,
+      );
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'Error al iniciar descarga: $e');
+    }
+  }
+
+  Future<void> _enviarComentario(String mangaId) async {
+    if (_commentController.text.trim().isEmpty) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    final userName = user?.email?.split('@')[0] ?? 'Lector Nocturno';
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('mangas')
+          .doc(mangaId)
+          .collection('comments')
+          .add({
+        'autor': userName,
+        'comentario': _commentController.text.trim(),
+        'puntuacion': _userRating,
+        'fecha': FieldValue.serverTimestamp(),
+        'clan': 'CLAN CARMESÍ',
+      });
+
+      setState(() {
+        _comments.insert(0, {
+          'autor': userName,
+          'comentario': _commentController.text.trim(),
+          'puntuacion': _userRating,
+          'tiempo': 'Justo ahora',
+          'clan': 'CLAN CARMESÍ',
+          'likes': 1,
+        });
+        _commentController.clear();
+      });
+
+      Fluttertoast.showToast(msg: 'Comentario publicado');
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'Error al publicar comentario: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    Size size = Utils(context).getScreenSize;
-    final Color color = Utils(context).color;
-    final mangasProvider = Provider.of<MangasProvider>(context);
     final mangaId = ModalRoute.of(context)!.settings.arguments as String;
-    final getCurrManga = mangasProvider.findMangabyId(mangaId);
+    final mangasProvider = Provider.of<MangasProvider>(context);
+    final currentManga = mangasProvider.findMangabyId(mangaId);
 
-    final wishListProvider = Provider.of<WishListProvider>(context);
-    /*bool? _isWishList =
-        wishListProvider.getWishListItems.containsKey(getCurrManga.id);*/
+    final wishlistProvider = Provider.of<WishListProvider>(context);
+    final isInWishlist = wishlistProvider.getWishListItems.containsKey(mangaId);
 
-    final viewedMangaProvider = Provider.of<ViewedMangaProvider>(context);
+    final viewedProvider = Provider.of<ViewedMangaProvider>(context);
 
-    final commentProvider =
-        Provider.of<CommentProvider>(context, listen: false);
-
-    return WillPopScope(
-      onWillPop: () async {
-        viewedMangaProvider.addMangasToHistory(mangaId: mangaId);
-        return true;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () =>
-                Navigator.canPop(context) ? Navigator.pop(context) : null,
-            child: Icon(
-              IconlyLight.arrowLeft2,
-              color: color,
-              size: 24,
-            ),
-          ),
-          elevation: 0,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    return Scaffold(
+      backgroundColor: KuroTheme.background,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: KuroTheme.background,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        body: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Imagen del manga
-              FancyShimmerImage(
-                imageUrl: getCurrManga.imageUrl,
-                boxFit: BoxFit.scaleDown,
-                width: size.width,
-              ),
-              // Detalles del manga
-              Padding(
-                padding: const EdgeInsets.all(7.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        title: Text(
+          'MANGA DETALLES',
+          style: KuroTheme.mono(fontSize: 12, color: KuroTheme.textWhite, fontWeight: FontWeight.w700),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              isInWishlist ? Icons.bookmark : Icons.bookmark_border,
+              color: isInWishlist ? KuroTheme.crimson : Colors.white,
+            ),
+            onPressed: () {
+              wishlistProvider.addRemoveMangasToWishList(mangaId: mangaId);
+              Fluttertoast.showToast(
+                msg: isInWishlist ? 'Eliminado de favoritos' : 'Guardado en Mi Biblioteca',
+                backgroundColor: KuroTheme.cardLighter,
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_outlined, color: Colors.white),
+            onPressed: () {
+              Fluttertoast.showToast(msg: 'Enlace copiado al portapapeles');
+            },
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 14),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7728B),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.person, color: Colors.black, size: 20),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 10),
+
+            // Badge superior: KURO EXCLUSIVE • EDICIÓN DELUXE
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: KuroTheme.cardLighter,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: KuroTheme.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            /*RatingBar.builder(
-                                initialRating: _userRating,
-                                minRating: 1,
-                                direction: Axis.horizontal,
-                                allowHalfRating: false,
-                                itemCount: 5,
-                                itemBuilder: (context, _) => Icon(
-                                      Icons.star,
-                                      color: Colors.amber,
-                                      size: 30,
-                                    ),
-                                onRatingUpdate: (rating) async {
-                                  setState(() {
-                                    _userRating = rating;
-                                  });
-
-                                  if (getCurrManga != null) {
-                                    final mangasRef = FirebaseFirestore.instance
-                                        .collection('mangas');
-                                    final detallePuntuacionRef =
-                                        FirebaseFirestore.instance
-                                            .collection('detalle_puntuacion');
-
-                                    final userUid =
-                                        FirebaseAuth.instance.currentUser?.uid;
-
-                                    if (userUid != null) {
-                                      // Buscar el registro de detalle_puntuacion del usuario actual para este manga
-                                      final detallePuntuacionQuery =
-                                          await detallePuntuacionRef
-                                              .where('idUsuario',
-                                                  isEqualTo: userUid)
-                                              .where('idManga',
-                                                  isEqualTo: mangaId)
-                                              .limit(1)
-                                              .get();
-
-                                      if (detallePuntuacionQuery
-                                          .docs.isNotEmpty) {
-                                        // Si el usuario ya votó antes, actualiza el rating en detalle_puntuacion
-                                        final detallePuntuacionDoc =
-                                            detallePuntuacionQuery.docs.first;
-                                        final currentRating =
-                                            detallePuntuacionDoc['rating'] ??
-                                                0.0;
-
-                                        // Resta el voto anterior y suma el nuevo voto
-                                        final newRating =
-                                            (getCurrManga.rating ?? 0.0) -
-                                                currentRating +
-                                                _userRating;
-
-                                        await mangasRef.doc(mangaId).update({
-                                          'rating': newRating /
-                                              (getCurrManga.numRatings ?? 1),
-                                        });
-
-                                        await detallePuntuacionDoc.reference
-                                            .update({
-                                          'numeroRating':
-                                              FieldValue.increment(1),
-                                          'rating': _userRating,
-                                        });
-                                      } else {
-                                        // Si es la primera vez que vota, guarda la puntuación en detalle_puntuacion
-                                        final newRating =
-                                            (getCurrManga.rating ?? 0.0) *
-                                                    (getCurrManga.numRatings ??
-                                                        0) +
-                                                _userRating /
-                                                    ((getCurrManga.numRatings ??
-                                                            0) +
-                                                        1);
-
-                                        await mangasRef.doc(mangaId).update({
-                                          'rating': newRating /
-                                              (getCurrManga.numRatings ?? 1),
-                                          'numRatings': FieldValue.increment(1),
-                                        });
-
-                                        final detallePuntuacion =
-                                            DetallePuntuacion(
-                                          idUsuario: userUid,
-                                          idManga: mangaId,
-                                          numeroRating: 1,
-                                          rating: _userRating,
-                                        );
-
-                                        try {
-                                          await detallePuntuacionRef
-                                              .add(detallePuntuacion.toMap());
-                                        } catch (error) {
-                                          print(
-                                              'Error al guardar la puntuación del usuario: $error');
-                                        }
-                                      }
-                                    }
-                                  }
-                                }),
-                            SizedBox(width: 8),
-                            Text(
-                              'Rating: ${getCurrManga.rating?.toStringAsFixed(1) ?? "N/A"}',
-                            ),*/
-                            Text("Rating: $_userRating"),
-                            RatingBar.builder(
-                              initialRating: _userRating,
-                              minRating: 1,
-                              direction: Axis.horizontal,
-                              allowHalfRating: false,
-                              itemCount: 5,
-                              itemSize: 30,
-                              itemBuilder: (context, _) => Icon(
-                                Icons.star,
-                                color: Colors.amber,
-                              ),
-                              onRatingUpdate: (rating) async {
-                                setState(() {
-                                  _userRating = rating;
-                                });
-
-                                if (getCurrManga != null) {
-                                  final mangasRef = FirebaseFirestore.instance
-                                      .collection('mangas');
-                                  final detallePuntuacionRef = FirebaseFirestore
-                                      .instance
-                                      .collection('detalle_puntuacion');
-
-                                  final userUid =
-                                      FirebaseAuth.instance.currentUser?.uid;
-
-                                  if (userUid != null) {
-                                    // Buscar el registro de detalle_puntuacion del usuario actual para este manga
-                                    final detallePuntuacionQuery =
-                                        await detallePuntuacionRef
-                                            .where('idUsuario',
-                                                isEqualTo: userUid)
-                                            .where('idManga',
-                                                isEqualTo: mangaId)
-                                            .limit(1)
-                                            .get();
-
-                                    if (detallePuntuacionQuery
-                                        .docs.isNotEmpty) {
-                                      // Si el usuario ya votó antes, actualiza el rating en detalle_puntuacion
-                                      final detallePuntuacionDoc =
-                                          detallePuntuacionQuery.docs.first;
-                                      final currentRating =
-                                          detallePuntuacionDoc['rating'] ?? 0.0;
-
-                                      // Resta el voto anterior y suma el nuevo voto
-                                      final newRating =
-                                          (getCurrManga.rating ?? 0.0) -
-                                              currentRating +
-                                              _userRating;
-
-                                      await mangasRef.doc(mangaId).update({
-                                        'rating': newRating /
-                                            (getCurrManga.numRatings ?? 1),
-                                      });
-
-                                      await detallePuntuacionDoc.reference
-                                          .update({
-                                        'numeroRating': FieldValue.increment(1),
-                                        'rating': _userRating,
-                                      });
-                                    } else {
-                                      // Si es la primera vez que vota, guarda la puntuación en detalle_puntuacion
-                                      final newRating = (getCurrManga.rating ??
-                                                  0.0) *
-                                              (getCurrManga.numRatings ?? 0) +
-                                          _userRating /
-                                              ((getCurrManga.numRatings ?? 0) +
-                                                  1);
-
-                                      await mangasRef.doc(mangaId).update({
-                                        'rating': newRating /
-                                            (getCurrManga.numRatings ?? 1),
-                                        'numRatings': FieldValue.increment(1),
-                                      });
-
-                                      final detallePuntuacion =
-                                          DetallePuntuacion(
-                                        idUsuario: userUid,
-                                        idManga: mangaId,
-                                        numeroRating: 1,
-                                        rating: _userRating,
-                                      );
-
-                                      try {
-                                        await detallePuntuacionRef
-                                            .add(detallePuntuacion.toMap());
-                                      } catch (error) {
-                                        print(
-                                            'Error al guardar la puntuación del usuario: $error');
-                                      }
-                                    }
-                                  }
-                                }
-                              },
-                            ),
-                            SizedBox(height: 20),
-                            // Título del manga
-                            TextosWidget(
-                              text: getCurrManga.title,
-                              color: color,
-                              textSize: 25,
-                              isTitle: true,
-                            ),
-
-                            SizedBox(height: 15),
-                            TextosWidget(
-                              text: 'Género: ${getCurrManga.mangaCategoryName}',
-                              color: Colors.green,
-                              textSize: 22,
-                              isTitle: true,
-                            ),
-                            SizedBox(height: 15),
-                            TextosWidget(
-                              text: 'Tipo: ${getCurrManga.type}',
-                              color: Colors.white60,
-                              textSize: 22,
-                              isTitle: true,
-                            ),
-                            SizedBox(height: 15),
-                            TextosWidget(
-                              text: 'Páginas: ${getCurrManga.numberPages}',
-                              color: Colors.red.shade300,
-                              textSize: 20,
-                              isTitle: true,
-                            ),
-                          ],
-                        ),
-                      ],
+                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'KURO EXCLUSIVE • EDICIÓN DELUXE',
+                      style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textGrey, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
               ),
-              // Botones de Ver Online y Descargar
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () async {
-                        final pdfUrl = getCurrManga.pdfUrl;
-                        final mangaTitle = getCurrManga.title;
+            ),
 
+            const SizedBox(height: 16),
+
+            // 3D Poster Cover Card
+            Center(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 200,
+                    height: 290,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: KuroTheme.border, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: KuroTheme.crimson.withValues(alpha: 0.25),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                      image: DecorationImage(
+                        image: NetworkImage(
+                          currentManga.imageUrl.isNotEmpty
+                              ? currentManga.imageUrl
+                              : 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
+                        ),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: KuroTheme.cyan.withValues(alpha: 0.6)),
+                      ),
+                      child: Text('TOMO 41', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: KuroTheme.crimson,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('FINALIZADO', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            // Stars & Rank
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.star, color: KuroTheme.gold, size: 14),
+                const SizedBox(width: 4),
+                Text('4.98 (89.4k)', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
+                const SizedBox(width: 8),
+                Text('•', style: KuroTheme.mono(color: KuroTheme.textMuted)),
+                const SizedBox(width: 8),
+                Text('#01 EN TENDENCIAS', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                currentManga.title.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              'Historia & Arte por Kentarou Miura • Hakusensha',
+              style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Genre Chips
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              alignment: WrapAlignment.center,
+              children: [
+                _buildTag('DARK FANTASY'),
+                _buildTag('SEINEN'),
+                _buildTag('PSICOLÓGICO'),
+                _buildTag(currentManga.numberPages.isNotEmpty ? '${currentManga.numberPages} PÁGINAS' : '370 CAPÍTULOS'),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Main Action Buttons (Leer & Descargar)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 6,
+                    child: GestureDetector(
+                      onTap: () {
+                        viewedProvider.addMangasToHistory(mangaId: currentManga.id);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => OnlineViewScreen(
-                              pdfUrl: pdfUrl,
-                              mangaTitle: mangaTitle,
+                            builder: (ctx) => OnlineViewScreen(
+                              pdfUrl: currentManga.pdfUrl,
+                              mangaTitle: currentManga.title,
                             ),
                           ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        primary: Colors.redAccent,
-                        shape: RoundedRectangleBorder(
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: KuroTheme.crimsonGradient,
                           borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: KuroTheme.crimson.withValues(alpha: 0.4),
+                              blurRadius: 14,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.menu_book, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'LEER CAP. 142',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Text('Ver online',
-                          style: TextStyle(color: Colors.white, fontSize: 18)),
                     ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        PermissionStatus status =
-                            await Permission.storage.request();
-
-                        if (status.isGranted) {
-                          _downloadPDF(getCurrManga.pdfUrl, getCurrManga.title);
-                        } else {
-                          if (status.isPermanentlyDenied) {
-                            // El usuario denegó permanentemente los permisos, muestra una alerta o una pantalla de configuración
-                            openAppSettings();
-                          } else {
-                            // El usuario denegó temporalmente los permisos
-                            print('Los permisos no fueron otorgados');
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        primary: Colors.green,
-                        shape: RoundedRectangleBorder(
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 4,
+                    child: GestureDetector(
+                      onTap: () => _downloadPDF(currentManga.pdfUrl, currentManga.title),
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: KuroTheme.cardLighter,
                           borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: KuroTheme.border),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.file_download_outlined, color: Colors.white, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'DESCARGAR',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Text('Descargar',
-                          style: TextStyle(color: Colors.white, fontSize: 18)),
-                    )
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Secondary Action Bar (En Mi Lista / Calificar / Compartir)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildSecondaryAction(
+                    icon: isInWishlist ? Icons.bookmark : Icons.bookmark_border,
+                    label: 'EN MI LISTA',
+                    active: isInWishlist,
+                    onTap: () {
+                      wishlistProvider.addRemoveMangasToWishList(mangaId: mangaId);
+                    },
+                  ),
+                  _buildSecondaryAction(
+                    icon: Icons.chat_bubble_outline,
+                    label: 'CALIFICAR',
+                    onTap: () {
+                      _showRatingDialog(context, mangaId);
+                    },
+                  ),
+                  _buildSecondaryAction(
+                    icon: Icons.share_outlined,
+                    label: 'COMPARTIR',
+                    onTap: () {
+                      Fluttertoast.showToast(msg: 'Enlace copiado');
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Card EXPEDIENTE // SINOPSIS
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: KuroTheme.cardDecoration(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(width: 4, height: 12, color: KuroTheme.crimson),
+                            const SizedBox(width: 6),
+                            Text(
+                              'FICHA TÉCNICA // SINOPSIS',
+                              style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        Text('SERIALIZACIÓN 1989-2023', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'En un mundo consumido por la niebla del eclipse y las cenizas de un pacto demoníaco ancestral, el guerrero maldito Guts continúa su implacable cacería contra las sombras que desgarran su destino...',
+                      style: KuroTheme.body(fontSize: 11.5, color: KuroTheme.textGrey, height: 1.5),
+                      maxLines: _isExpandedSynopsis ? null : 3,
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isExpandedSynopsis = !_isExpandedSynopsis;
+                        });
+                      },
+                      child: Text(
+                        _isExpandedSynopsis ? 'PLEGAR SINOPSIS ⌃' : 'DESPLEGAR SINOPSIS ⌵',
+                        style: KuroTheme.mono(fontSize: 9, color: KuroTheme.crimson, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // 2x2 Metadata Grid
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: KuroTheme.cardLighter,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              _buildMetaCell('DIRECCIÓN DE LECTURA', 'Derecha a Izquierda (RTL)'),
+                              _buildMetaCell('SERIALIZACIÓN', 'Young Animal'),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              _buildMetaCell('DEMOGRAFÍA', 'Seinen (Adulto)'),
+                              _buildMetaCell('TRADUCCIÓN', 'Scan Oficial KuroHQ', isCyan: true),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-              // Comentarios
-              Builder(builder: (context) {
-                if (_isContentLoaded) {
-                  return Container(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+
+            const SizedBox(height: 20),
+
+            // Tab Bar: Capítulos (376), Tomos (41), Comunidad (1.4k)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: KuroTheme.card,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: KuroTheme.border),
+                ),
+                child: Row(
+                  children: [
+                    _buildTabButton('Capítulos (376)', 0),
+                    _buildTabButton('Tomos (41)', 1),
+                    _buildTabButton('Comunidad (1.4k)', 2),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Quick Last Read
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: KuroTheme.cardDecoration(borderColor: KuroTheme.crimson.withValues(alpha: 0.5)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: KuroTheme.crimson.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(Icons.play_arrow, color: KuroTheme.crimson, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ÚLTIMO LEÍDO  Pág 18/34', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                          Text('Cap. 142: El Festín de...', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: KuroTheme.crimson,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('CONTINUAR', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Chapter Rows
+            _buildChapterItem('#143', 'Llamas en la Colina de la...', 'Tomo 17 • 32 Páginas • Hace 3 días', isDownloaded: false, currentManga: currentManga),
+            _buildChapterItem('#141', 'La Torre de la Convicción', 'Leído • Descargado', isDownloaded: true, currentManga: currentManga),
+            _buildChapterItem('#140', 'El Monstruo en las Tinieblas...', 'Leído', isDownloaded: false, currentManga: currentManga),
+            _buildChapterItem('#139', 'Visiones del Banquete M...', 'Leído', isDownloaded: false, currentManga: currentManga),
+
+            const SizedBox(height: 10),
+
+            // Button: VER LOS 376 CAPÍTULOS COMPLETOS
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: KuroTheme.cardLighter,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: KuroTheme.border),
+                ),
+                child: Center(
+                  child: Text(
+                    'VER LOS 376 CAPÍTULOS COMPLETOS',
+                    style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textGrey, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Section: DISCUSIÓN DE LA COMUNIDAD // RESEÑAS
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: KuroTheme.cardDecoration(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Comentarios',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 10),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          //itemCount: _comments.length,
-                          itemCount: commentProvider.comments
-                              .where((comment) => comment['mangaId'] == mangaId)
-                              .length, // Obtener la longitud de los comentarios del Provider
-                          itemBuilder: (ctx, index) {
-                            //final comment = _comments[index];
-                            //final commentId = commentProvider.getCommentIdAtIndex(index);
-
-                            final filteredComments = commentProvider.comments
-                                .where(
-                                    (comment) => comment['mangaId'] == mangaId)
-                                .toList();
-
-                            final comment = filteredComments[index];
-                            final userDocRef =
-                                comment['usuarioDocRef'] as DocumentReference;
-                            final commentId = comment[
-                                'commentId']; // Obtener el commentId directamente
-                            return FutureBuilder<DocumentSnapshot>(
-                              future: userDocRef.get(),
-                              builder: (ctx, snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return ListTile(
-                                    title: Text(comment['contenido']),
-                                    subtitle: Text('Cargando usuario...'),
-                                  );
-                                }
-                                if (snapshot.hasError) {
-                                  return ListTile(
-                                    title: Text(comment['contenido']),
-                                    subtitle: Text('Error al obtener usuario'),
-                                  );
-                                }
-                                final userData = snapshot.data?.data()
-                                    as Map<String, dynamic>;
-                                final username = userData[
-                                    'usuario']; // Cambia 'username' por el campo que almacena el nombre de usuario en tu colección de usuarios
-                                return ListTile(
-                                  //title: Text(comment['contenido']),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(comment['contenido'],
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 18)),
-                                            IconButton(
-                                              icon: Icon(Icons.edit),
-                                              onPressed: () {
-                                                _editComment(
-                                                    index, commentId, comment);
-                                                (commentId, comment);
-                                              },
-                                            ),
-                                            /*SizedBox(
-                                          height: 20,
-                                        ),*/
-                                          ]),
-                                      Text('Usuario: $username'),
-                                      SizedBox(
-                                          height:
-                                              8), // Agrega un espacio vertical
-                                      Text('Fecha: ' + comment['fecha']),
-                                    ],
-                                  ),
-                                );
-                              },
-                            );
-                          },
+                        Row(
+                          children: [
+                            Container(width: 4, height: 12, color: KuroTheme.crimson),
+                            const SizedBox(width: 6),
+                            Text(
+                              'DISCUSIÓN DE LA COMUNIDAD // RESEÑAS',
+                              style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 10),
-                        TextField(
-                          controller: _commentController,
-                          decoration: InputDecoration(
-                            hintText: 'Agregar comentario...',
+                        Text('★ 4.98 / 5.0', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.gold, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    Text('Voz de los lectores verificados de Kuro', style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
+
+                    const SizedBox(height: 16),
+
+                    // Big Rating Breakdown
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '4.9',
+                              style: GoogleFonts.spaceGrotesk(fontSize: 38, fontWeight: FontWeight.w900, color: Colors.white, height: 1.0),
+                            ),
+                            Row(
+                              children: List.generate(
+                                5,
+                                (index) => const Icon(Icons.star, color: KuroTheme.gold, size: 14),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('89,410 votos', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted)),
+                          ],
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildRatingBarRow('5', 0.94, '94%'),
+                              _buildRatingBarRow('4', 0.04, '4%'),
+                              _buildRatingBarRow('3', 0.01, '1%'),
+                            ],
                           ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_commentController.text.isNotEmpty) {
-                              _submitComment();
-                            }
-                          },
-                          child: Text('Agregar Comentario'),
                         ),
                       ],
                     ),
-                  );
-                } else {
-                  return CircularProgressIndicator(); // O cualquier indicador de carga
-                }
-              })
-            ],
+
+                    const SizedBox(height: 18),
+
+                    // Comment Input Box
+                    Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
+                          child: Center(child: Text('KU', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800))),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('Comentar como ', style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey)),
+                        Text('Lector Nocturno', style: KuroTheme.mono(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 44,
+                      decoration: KuroTheme.cardDecoration(color: KuroTheme.cardLighter),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _commentController,
+                              style: KuroTheme.body(color: Colors.white, fontSize: 12),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Escribe tu teoría o comentario sobre el tomo...',
+                                hintStyle: KuroTheme.body(color: KuroTheme.textMuted, fontSize: 11),
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => _enviarComentario(mangaId),
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(6)),
+                              child: const Icon(Icons.send, color: Colors.white, size: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // User Review Cards (Matching Diseños 6)
+                    _buildReviewCard(
+                      avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
+                      userName: 'Valentin_Dragonslayer',
+                      clan: 'CLAN CARMESÍ',
+                      clanColor: KuroTheme.crimson,
+                      timeAgo: 'Hace 2 horas • Leyendo Cap. 384',
+                      comment: 'La doble página del capítulo 142 sigue siendo insuperable. La forma en que Miura maneja el entintado de la espada y la textura de la armadura no tiene comparación en toda la historia del manga. Releer esto en Kuro con resolución nativa es una experiencia casi religiosa.',
+                      likes: '428',
+                      replies: '34 respuestas',
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    _buildReviewCard(
+                      avatarUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
+                      userName: 'Noctis_Kuro',
+                      clan: 'CLAN SOMBRA',
+                      clanColor: KuroTheme.cardLighter,
+                      timeAgo: 'Ayer • Al día con el manga',
+                      comment: 'Si vienes por el combate brutal te quedas por la profunda herida emocional de Guts y Casca. Es una tragedia griega dibujada con tinta divina. No duden en descargar los tomos para leerlos sin pausas en el modo inmersivo de Kuro.',
+                      likes: '215',
+                      replies: '12 respuestas',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: KuroTheme.cardLighter,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: KuroTheme.border),
+      ),
+      child: Text(text, style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textGrey, fontWeight: FontWeight.w700)),
+    );
+  }
+
+  Widget _buildSecondaryAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool active = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, color: active ? KuroTheme.crimson : KuroTheme.textGrey, size: 16),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: KuroTheme.mono(
+              fontSize: 9.5,
+              color: active ? KuroTheme.crimson : KuroTheme.textGrey,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetaCell(String label, String value, {bool isCyan = false}) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.textMuted)),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isCyan ? KuroTheme.cyan : Colors.white,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(String title, int index) {
+    final isSelected = _selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? KuroTheme.crimson : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Center(
+            child: Text(
+              title,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? Colors.white : KuroTheme.textGrey,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _editComment(int index, String commentId, Map<String, dynamic> comment) {
-    final commentProvider =
-        Provider.of<CommentProvider>(context, listen: false);
-    final TextEditingController _editController =
-        TextEditingController(text: comment['contenido']);
+  Widget _buildChapterItem(
+    String num,
+    String title,
+    String sub, {
+    required bool isDownloaded,
+    required dynamic currentManga,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: KuroTheme.cardDecoration(),
+        child: Row(
+          children: [
+            Text(num, style: KuroTheme.mono(fontSize: 11, color: KuroTheme.textMuted, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1),
+                  Text(sub, style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted), maxLines: 1),
+                ],
+              ),
+            ),
+            if (isDownloaded)
+              const Icon(Icons.check_circle_outline, color: KuroTheme.cyan, size: 18)
+            else
+              IconButton(
+                icon: const Icon(Icons.file_download_outlined, color: KuroTheme.textGrey, size: 18),
+                onPressed: () => _downloadPDF(currentManga.pdfUrl, currentManga.title),
+              ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_forward_ios, color: KuroTheme.textMuted, size: 12),
+          ],
+        ),
+      ),
+    );
+  }
 
+  Widget _buildRatingBarRow(String star, double fill, String percentage) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text(star, style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              height: 4,
+              decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(2)),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: fill,
+                child: Container(
+                  decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(percentage, style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard({
+    required String avatarUrl,
+    required String userName,
+    required String clan,
+    required Color clanColor,
+    required String timeAgo,
+    required String comment,
+    required String likes,
+    required String replies,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: KuroTheme.cardLighter,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: KuroTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.network(avatarUrl, width: 28, height: 28, fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(userName, style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(color: clanColor.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(3)),
+                          child: Text(clan, style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                    Text(timeAgo, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),
+                  ],
+                ),
+              ),
+              Row(children: List.generate(5, (i) => const Icon(Icons.star, color: KuroTheme.gold, size: 10))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(comment, style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey, height: 1.4)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.favorite_border, color: KuroTheme.textMuted, size: 14),
+              const SizedBox(width: 4),
+              Text(likes, style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted)),
+              const SizedBox(width: 14),
+              const Icon(Icons.chat_bubble_outline, color: KuroTheme.textMuted, size: 14),
+              const SizedBox(width: 4),
+              Text(replies, style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted)),
+              const Spacer(),
+              Text('Verificado', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.cyan)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRatingDialog(BuildContext context, String mangaId) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Editar Comentario'),
-          content: TextField(
-            controller: _editController,
-            onChanged: (newContent) {
-              comment['contenido'] = newContent;
-            },
-            decoration: InputDecoration(labelText: 'Nuevo contenido'),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Guardar'),
-              onPressed: () async {
-                final newContent = _editController.text;
-                print('Nuevo contenido: $newContent');
-                if (newContent.isNotEmpty) {
-                  final commentsRef =
-                      FirebaseFirestore.instance.collection('comments');
-
-                  // Verificar si el documento existe antes de intentar actualizarlo
-                  print('commentId: $commentId');
-                  final commentDoc = await commentsRef.doc(commentId).get();
-                  if (commentDoc.exists) {
-                    print('Documento encontrado en Firestore');
-                    await commentProvider.editComment(commentId, newContent);
-                    await commentsRef
-                        .doc(commentId)
-                        .update({'contenido': newContent});
-
-                    setState(() {
-                      // Actualizar el comentario en la lista local
-                      commentProvider.comments[index]['contenido'] = newContent;
-                      print('Comentario actualizado en la lista local');
-                    });
-                  } else {
-                    print('El documento no existe en Firestore.');
-                  }
-                  Navigator.of(context).pop();
-                }
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KuroTheme.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('CALIFICAR OBRA', style: KuroTheme.mono(fontSize: 12, color: KuroTheme.crimson)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RatingBar.builder(
+              initialRating: _userRating,
+              minRating: 1,
+              direction: Axis.horizontal,
+              allowHalfRating: true,
+              itemCount: 5,
+              itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
+              itemBuilder: (context, _) => const Icon(Icons.star, color: KuroTheme.gold),
+              onRatingUpdate: (rating) {
+                setState(() => _userRating = rating);
               },
             ),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('GUARDAR', style: KuroTheme.mono(fontSize: 12, color: KuroTheme.crimson)),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -17,7 +17,7 @@ class MangasProvider with ChangeNotifier {
       final mangaSnapshot =
           await FirebaseFirestore.instance.collection('mangas').get();
 
-      mangaSnapshot.docs.forEach((element) {
+      for (var element in mangaSnapshot.docs) {
         newMangasList.add(MangasModels(
           id: element.get('id'),
           title: element.get('title'),
@@ -27,7 +27,7 @@ class MangasProvider with ChangeNotifier {
           numberPages: element.get('numberPages'),
           pdfUrl: element.get('pdfUrl'),
         ));
-      });
+      }
 
       _mangasList.clear();
       _mangasList.addAll(newMangasList);
@@ -35,7 +35,7 @@ class MangasProvider with ChangeNotifier {
       notifyListeners();
     } catch (error) {
       print("Error al cargar mangas: $error");
-      throw error;
+      rethrow;
     }
   }
 
@@ -46,22 +46,22 @@ class MangasProvider with ChangeNotifier {
 
   List<MangasModels> findByCategory(String categoryName) {
     //BUSCAR MANGA POR NOMBRE DE CATEGORIA
-    List<MangasModels> _categoryList = _mangasList
+    List<MangasModels> categoryList = _mangasList
         .where((element) => element.mangaCategoryName
             .toLowerCase()
             .contains(categoryName.toLowerCase()))
         .toList();
-    return _categoryList;
+    return categoryList;
   }
 
   List<MangasModels> searchQuery(String searchText) {
     //BUSCAR MANGA POR NOMBRE DE CATEGORIA
-    List<MangasModels> _searchList = _mangasList
+    List<MangasModels> searchList = _mangasList
         .where(
           (element) =>
               element.title.toLowerCase().contains(searchText.toLowerCase()),
         )
         .toList();
-    return _searchList;
+    return searchList;
   }
 }
