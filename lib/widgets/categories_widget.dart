@@ -17,7 +17,7 @@ class CategoriesWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeState = Provider.of<DarkThemeProvider>(context);
-    double _screenWidth = MediaQuery.of(context).size.width;
+    double screenWidth = MediaQuery.of(context).size.width;
     final Color color = themeState.getDarkTheme ? Colors.white : Colors.black;
     return InkWell(
       onTap: () {
@@ -27,18 +27,18 @@ class CategoriesWidget extends StatelessWidget {
       child: Container(
         //height: _screenWidth * 0.6,
         decoration: BoxDecoration(
-          color: passedColor.withOpacity(0.1),
+          color: passedColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: passedColor.withOpacity(0.7),
+            color: passedColor.withValues(alpha: 0.7),
             width: 2,
           ),
         ),
         child: Column(
           children: [
             Container(
-              height: _screenWidth * 0.3,
-              width: _screenWidth * 0.3,
+              height: screenWidth * 0.3,
+              width: screenWidth * 0.3,
               decoration: BoxDecoration(
                   image: DecorationImage(
                 //image: AssetImage('images/mangas/shonen/dragon_ball_super.jpg'),

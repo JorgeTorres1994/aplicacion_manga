@@ -25,11 +25,11 @@ class WishListWidget extends StatelessWidget {
     final getCurrManga = mangaProvider.findMangabyId(wishListModel.mangaId);
 
     //final mangaModel = Provider.of<CartModel>(context);
-    bool? _isWishList =
+    bool? isWishList =
         wishListProvider.getWishListItems.containsKey(getCurrManga.id);
 
     return Padding(
-      padding: EdgeInsets.all(4.0),
+      padding: const EdgeInsets.all(4.0),
       child: GestureDetector(
         onTap: () {
           Navigator.pushNamed(
@@ -50,7 +50,7 @@ class WishListWidget extends StatelessWidget {
               Flexible(
                 flex: 3,
                 child: Container(
-                  margin: EdgeInsets.only(left: 8),
+                  margin: const EdgeInsets.only(left: 8),
                   height: size.width * 0.3,
                   //width: size.width * 0.2,
                   child: FancyShimmerImage(
@@ -79,7 +79,7 @@ class WishListWidget extends StatelessWidget {
                           ),
                           HearthButton(
                             mangaId: getCurrManga.id,
-                            isWishList: _isWishList,
+                            isWishList: isWishList,
                           ),
                         ],
                       ),

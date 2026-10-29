@@ -1,91 +1,91 @@
+import 'package:aplicacion_manga/Screens/admin_pagina_categorias.dart';
 import 'package:aplicacion_manga/Screens/admin_pagina_inicio.dart';
-import 'package:aplicacion_manga/provider/dark_theme_provider.dart';
+import 'package:aplicacion_manga/Screens/admin_pagina_usuarios.dart';
+import 'package:aplicacion_manga/Screens/wishlist/admin_wishlist_screen.dart';
+import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_iconly/flutter_iconly.dart';
-import 'package:provider/provider.dart';
-
-import 'admin_pagina_categorias.dart';
-import 'admin_pagina_config_usuario.dart';
-import 'admin_pagina_usuarios.dart';
 
 class AdminPaginaPrincipal extends StatefulWidget {
   const AdminPaginaPrincipal({Key? key}) : super(key: key);
+
   @override
-  _NavBarState createState() => _NavBarState();
+  _AdminPaginaPrincipalState createState() => _AdminPaginaPrincipalState();
 }
 
-class _NavBarState extends State<AdminPaginaPrincipal> {
-  int selectedIndex = 0;
+class _AdminPaginaPrincipalState extends State<AdminPaginaPrincipal> {
+  int _selectedIndex = 0;
 
-  final _screens = [
+  final List<Widget> _screens = const [
     AdminPaginaInicio(),
-    //AdminPaginaFavoritos(),
     AdminPaginaCategorias(),
-    //AdminPaginaDescargas(),
-    //AdminCartScreen(),
+    AdminWishListScreem(),
     AdminPaginaUsuarios(),
-    AdminPaginaConfigUsuario(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final themeState = Provider.of<DarkThemeProvider>(context);
+    return Scaffold(
+      backgroundColor: KuroTheme.background,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: Container(
+        height: 62,
+        decoration: const BoxDecoration(
+          color: KuroTheme.backgroundSecondary,
+          border: Border(
+            top: BorderSide(color: KuroTheme.border, width: 1),
+          ),
+        ),
+        child: Row(
+          children: [
+            _buildNavItem(icon: Icons.home_filled, label: 'INICIO', index: 0),
+            _buildNavItem(icon: Icons.explore_outlined, label: 'EXPLORAR', index: 1),
+            _buildNavItem(icon: Icons.menu_book_outlined, label: 'BIBLIOTECA', index: 2),
+            _buildNavItem(icon: Icons.person_outline, label: 'PERFIL', index: 3),
+          ],
+        ),
+      ),
+    );
+  }
 
-    Widget customBottomNav() {
-      return BottomNavigationBar(
-        backgroundColor: themeState.getDarkTheme
-            ? Theme.of(context).cardColor
-            : Colors.white,
-        type: BottomNavigationBarType.fixed,
-        currentIndex: selectedIndex,
-        onTap: (i) {
-          print(i);
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    final isSelected = _selectedIndex == index;
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
           setState(() {
-            selectedIndex = i;
+            _selectedIndex = index;
           });
         },
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(selectedIndex == 0 ? IconlyBold.home : IconlyLight.home),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(selectedIndex == 1
-                ? IconlyBold.category
-                : IconlyLight.category),
-            label: '',
-          ),
-          /*BottomNavigationBarItem(
-            icon: Icon(selectedIndex == 2 ? IconlyBold.buy : IconlyLight.buy),
-            label: '',
-          ),*/
-          BottomNavigationBarItem(
-            icon:
-                Icon(selectedIndex == 2 ? IconlyBold.user2 : IconlyLight.user2),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(
-                selectedIndex == 3 ? IconlyBold.setting : IconlyLight.setting),
-            label: '',
-          ),
-        ],
-      );
-    }
-
-    return Scaffold(
-      bottomNavigationBar: customBottomNav(),
-      body: Stack(
-          children: _screens
-              .asMap()
-              .map((i, screen) => MapEntry(
-                  i,
-                  Offstage(
-                    offstage: selectedIndex != i,
-                    child: screen,
-                  )))
-              .values
-              .toList()),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? KuroTheme.crimson : KuroTheme.textMuted,
+              size: 22,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: KuroTheme.mono(
+                fontSize: 8.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? KuroTheme.crimson : KuroTheme.textMuted,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

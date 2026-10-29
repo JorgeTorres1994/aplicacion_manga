@@ -35,7 +35,7 @@ class _FeedsWidgetState extends State<FeedsWidget> {
     Size size = Utils(context).getScreenSize;
     final mangaModel = Provider.of<MangasModels>(context);
     final wishListProvider = Provider.of<WishListProvider>(context);
-    bool? _isWishList =
+    bool? isWishList =
         wishListProvider.getWishListItems.containsKey(mangaModel.id);
 
     return Center(
@@ -59,7 +59,7 @@ class _FeedsWidgetState extends State<FeedsWidget> {
                   height: size.height * 0.22,
                   boxFit: BoxFit.fill,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   mangaModel.title,
                   textAlign: TextAlign.center,
@@ -71,7 +71,7 @@ class _FeedsWidgetState extends State<FeedsWidget> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 /*HearthButton(
                   mangaId: mangaModel.id,
                   isWishList: _isWishList,
