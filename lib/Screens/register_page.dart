@@ -126,13 +126,15 @@ class _RegisterPageState extends State<RegisterPage> {
       final User? user = userCredential.user;
       if (user != null) {
         // Determinar rol (si es admin específico)
-        final isKuroAdmin = correoController.text.trim().toLowerCase().contains('admin');
+        final isKuroAdmin =
+            correoController.text.trim().toLowerCase().contains('admin');
 
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'userId': user.uid,
           'usuario': usuarioController.text.trim(),
           'correo': correoController.text.trim(),
-          'celular': '${prefijoController.text.trim()} ${celularController.text.trim()}',
+          'celular':
+              '${prefijoController.text.trim()} ${celularController.text.trim()}',
           'clan': _selectedClan,
           'rango': isKuroAdmin ? 'ROOT ADMIN' : 'VETERANO',
           'nivel': isKuroAdmin ? 99 : 42,
@@ -621,9 +623,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             : KuroTheme.card,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isSelected
-                              ? KuroTheme.crimson
-                              : KuroTheme.border,
+                          color:
+                              isSelected ? KuroTheme.crimson : KuroTheme.border,
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
@@ -705,9 +706,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             fontSize: 11,
                             color: KuroTheme.textGrey,
                           ),
-                          children: [
-                            const TextSpan(
-                                text: 'Acepto los términos de la '),
+                          children: const [
+                            TextSpan(text: 'Acepto los términos de la '),
                             TextSpan(
                               text: 'Comunidad Manga',
                               style: TextStyle(
@@ -716,7 +716,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const TextSpan(
+                            TextSpan(
                               text:
                                   ' y las políticas de privacidad de la plataforma.',
                             ),

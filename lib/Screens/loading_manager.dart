@@ -19,7 +19,7 @@ class LoadingManager extends StatelessWidget {
             : Container(),
         isLoading
             ? const Center(
-                child: const SpinKitFadingFour(
+                child: SpinKitFadingFour(
                 color: Colors.white,
               ))
             : Container(),

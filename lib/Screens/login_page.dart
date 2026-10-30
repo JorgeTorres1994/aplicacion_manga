@@ -77,10 +77,68 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = true;
       });
 
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+      final email = emailController.text.trim();
+      final password = passwordController.text.trim();
+
+      UserCredential? credential;
+      try {
+        credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+          try {
+            credential =
+                await FirebaseAuth.instance.createUserWithEmailAndPassword(
+              email: email,
+              password: password,
+            );
+          } catch (_) {
+            rethrow;
+          }
+        } else {
+          rethrow;
+        }
+      }
+
+      final user = credential.user ?? FirebaseAuth.instance.currentUser;
+      final emailLower = email.toLowerCase();
+      bool isAdmin = (emailLower == 'jorge.torres.1994.1000@gmail.com') ||
+          emailLower.contains('admin');
+
+      if (user != null) {
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          if (doc.exists && doc.data() != null) {
+            final storedRole = doc.data()?['rol'];
+            if (storedRole == 'admin' ||
+                emailLower == 'jorge.torres.1994.1000@gmail.com') {
+              isAdmin = true;
+            } else if (storedRole == 'reader') {
+              isAdmin = false;
+            }
+          } else {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .set({
+              'userId': user.uid,
+              'usuario': isAdmin ? 'Jorge Torres' : 'Kenji Reader',
+              'correo': email,
+              'celular': isAdmin ? '+51 987654321' : '+51 952336505',
+              'clan': 'Carmesí',
+              'rango': isAdmin ? 'ROOT ADMIN' : 'LECTOR REGULAR',
+              'nivel': isAdmin ? 99 : 12,
+              'rol': isAdmin ? 'admin' : 'reader',
+              'fecha_registro': FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (_) {}
+      }
 
       if (!mounted) return;
       setState(() {
@@ -88,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (ctx) => const FetchScreen(),
+        builder: (ctx) => FetchScreen(isAdmin: isAdmin),
       ));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
@@ -99,8 +157,7 @@ class _LoginPageState extends State<LoginPage> {
       String errorMsg;
       if (e.code == 'user-not-found') {
         errorMsg = 'El correo no se encuentra registrado en Kuro.';
-      } else if (e.code == 'wrong-password' ||
-          e.code == 'invalid-credential') {
+      } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
         errorMsg = 'Contraseña o credenciales incorrectas.';
       } else if (e.code == 'invalid-email') {
         errorMsg = 'El formato de correo no es válido.';
@@ -129,47 +186,39 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      UserCredential? credential;
       try {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
+        credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
       } on FirebaseAuthException catch (e) {
         if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
-          final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          credential =
+              await FirebaseAuth.instance.createUserWithEmailAndPassword(
             email: email,
             password: password,
           );
-          final user = credential.user;
-          if (user != null) {
-            await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-              'userId': user.uid,
-              'usuario': isAdmin ? 'Kuro_Root' : 'Ren Takahashi',
-              'correo': email,
-              'celular': isAdmin ? '+51 987654321' : '+51 952336505',
-              'clan': 'Carmesí',
-              'rango': isAdmin ? 'ROOT ADMIN' : 'VETERANO',
-              'nivel': isAdmin ? 99 : 42,
-              'rol': isAdmin ? 'admin' : 'reader',
-              'fecha_registro': FieldValue.serverTimestamp(),
-            });
-          }
         } else {
           rethrow;
         }
       }
 
-      final currentUser = FirebaseAuth.instance.currentUser;
+      final currentUser = credential.user ?? FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
-        await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).set({
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .set({
           'userId': currentUser.uid,
-          'usuario': isAdmin ? 'Kuro_Root' : 'Ren Takahashi',
+          'usuario': isAdmin ? 'Jorge Torres' : 'Kenji Reader',
           'correo': email,
           'celular': isAdmin ? '+51 987654321' : '+51 952336505',
           'clan': 'Carmesí',
-          'rango': isAdmin ? 'ROOT ADMIN' : 'VETERANO',
-          'nivel': isAdmin ? 99 : 42,
+          'rango': isAdmin ? 'ROOT ADMIN' : 'LECTOR REGULAR',
+          'nivel': isAdmin ? 99 : 12,
           'rol': isAdmin ? 'admin' : 'reader',
+          'fecha_registro': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }
 
@@ -179,7 +228,7 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (ctx) => const FetchScreen(),
+        builder: (ctx) => FetchScreen(isAdmin: isAdmin),
       ));
     } catch (e) {
       if (!mounted) return;
@@ -278,7 +327,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ],
                         ),
-                        child: Center(
+                        child: const Center(
                           child: Icon(
                             Icons.auto_awesome,
                             color: KuroTheme.crimson,
@@ -363,8 +412,8 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: KuroTheme.card,
                       borderRadius: BorderRadius.circular(6),
@@ -450,7 +499,7 @@ class _LoginPageState extends State<LoginPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     children: [
-                      Icon(Icons.mail_outline,
+                      const Icon(Icons.mail_outline,
                           color: KuroTheme.textMuted, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
@@ -503,7 +552,7 @@ class _LoginPageState extends State<LoginPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     children: [
-                      Icon(Icons.lock_outline,
+                      const Icon(Icons.lock_outline,
                           color: KuroTheme.textMuted, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
@@ -565,14 +614,14 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 16),
 
-                // Accesos Rápidos Demo Firebase (Admin & Lector)
+                // Accesos Rápidos Demo Firebase (Admin Jorge & Lector Kenji)
                 Row(
                   children: [
                     Expanded(
                       child: GestureDetector(
                         onTap: () => _autofillAndLogin(
-                          email: 'admin@kuro.manga',
-                          password: 'Admin123456*',
+                          email: 'jorge.torres.1994.1000@gmail.com',
+                          password: 'Sukitteiinayo1',
                           isAdmin: true,
                         ),
                         child: Container(
@@ -580,14 +629,20 @@ class _LoginPageState extends State<LoginPage> {
                           decoration: BoxDecoration(
                             color: KuroTheme.purple.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: KuroTheme.purple.withValues(alpha: 0.5)),
+                            border: Border.all(
+                                color: KuroTheme.purple.withValues(alpha: 0.5)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.shield, color: KuroTheme.purple, size: 14),
+                              const Icon(Icons.shield,
+                                  color: KuroTheme.purple, size: 14),
                               const SizedBox(width: 6),
-                              Text('ADMIN DEMO', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text('ADMIN (JORGE)',
+                                  style: KuroTheme.mono(
+                                      fontSize: 9.5,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -597,8 +652,8 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () => _autofillAndLogin(
-                          email: 'lector@kuro.manga',
-                          password: 'Lector123456*',
+                          email: 'lector.kuro@gmail.com',
+                          password: 'MangaReader2026!',
                           isAdmin: false,
                         ),
                         child: Container(
@@ -606,14 +661,20 @@ class _LoginPageState extends State<LoginPage> {
                           decoration: BoxDecoration(
                             color: KuroTheme.cyan.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: KuroTheme.cyan.withValues(alpha: 0.5)),
+                            border: Border.all(
+                                color: KuroTheme.cyan.withValues(alpha: 0.5)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.menu_book, color: KuroTheme.cyan, size: 14),
+                              const Icon(Icons.menu_book,
+                                  color: KuroTheme.cyan, size: 14),
                               const SizedBox(width: 6),
-                              Text('LECTOR DEMO', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text('LECTOR RANDOM',
+                                  style: KuroTheme.mono(
+                                      fontSize: 9.5,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),

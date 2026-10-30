@@ -15,7 +15,8 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final emailController = TextEditingController();
 
-  void Dispose() {
+  @override
+  void dispose() {
     emailController.dispose();
     super.dispose();
   }
@@ -24,16 +25,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       await FirebaseAuth.instance
           .sendPasswordResetEmail(email: emailController.text.trim());
+      if (!mounted) return;
       showDialog(
           context: context,
           builder: (context) {
             return const AlertDialog(
-              content: const Text(
+              content: Text(
                   '¡El link para resear tu contraseña fue enviado!, revisa tu correo'),
             );
           });
-    } on FirebaseAuthException catch (e) {
-      print(e);
+    } on FirebaseAuthException catch (_) {
+      if (!mounted) return;
       showDialog(
           context: context,
           builder: (context) {
@@ -41,7 +43,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               /*content: Text(
                 e.message.toString(),
               ),*/
-              content: const Text(
+              content: Text(
                 '¡El correo no existe!, no se pudo restaurar la contraseña',
               ),
             );
@@ -157,7 +159,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       onPressed: () {
                         passwordReset();
                       },
-                      child: Text(
+                      child: const Text(
                         'Enviar enlace',
                         style: TextStyle(
                           color: Colors.white,
@@ -176,7 +178,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     children: [
                       const Text(
                         '¿Quieres retroceder?',
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.white),
                       ),
                       const SizedBox(height: 4),
                       GestureDetector(
