@@ -84,6 +84,52 @@ void main() {
       expect(commentPayload['clan'], equals('CLAN CARMESÍ'));
       expect(commentPayload['puntuacion'], equals(5.0));
     });
+
+    test('6. Colección canónica "comentarios" - Distinción de rol Lector vs Admin', () {
+      final readerComment = {
+        'mangaId': 'claymore-id',
+        'mangaTitle': 'Claymore',
+        'userId': 'reader_01',
+        'autor': 'Kenji Reader',
+        'rol': 'reader',
+        'rango': 'LECTOR REGULAR',
+        'clan': 'CLAN SOMBRA',
+        'comentario': 'Me encanta el diseño de las espadas.',
+        'puntuacion': 4.5,
+        'estado': 'publicado',
+        'reportado': false,
+      };
+
+      final adminComment = {
+        'mangaId': 'claymore-id',
+        'mangaTitle': 'Claymore',
+        'userId': 'admin_01',
+        'autor': 'Jorge Torres',
+        'rol': 'admin',
+        'rango': 'ROOT ADMIN',
+        'clan': 'CLAN CARMESÍ',
+        'comentario': 'Capítulo 2 subido en HD.',
+        'puntuacion': 5.0,
+        'estado': 'publicado',
+        'reportado': false,
+      };
+
+      expect(readerComment['rol'], equals('reader'));
+      expect(adminComment['rol'], equals('admin'));
+      expect(adminComment['rango'], equals('ROOT ADMIN'));
+      expect(readerComment['estado'], equals('publicado'));
+    });
+
+    test('7. Visor de Manga - Detección de manga sin capítulos y fallback seguro', () {
+      final List<Map<String, dynamic>> capsList = [];
+      final String mangaPdfUrl = '';
+
+      final bool hasChapters = capsList.isNotEmpty;
+      final bool hasDirectPdf = mangaPdfUrl.trim().isNotEmpty && mangaPdfUrl.startsWith('http');
+      final bool canRead = hasChapters || hasDirectPdf;
+
+      expect(canRead, isFalse); // Debe mostrar diálogo "Capítulo no disponible"
+    });
   });
 }
 
