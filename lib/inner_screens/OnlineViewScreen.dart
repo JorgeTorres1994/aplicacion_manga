@@ -44,62 +44,130 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    _loadContent();
+  }
 
-    if (widget.pageImages != null && widget.pageImages!.isNotEmpty) {
-      _effectiveImages = widget.pageImages!;
-      _totalPages = _effectiveImages.length;
-      _isLoading = false;
-    } else {
-      _loadPDF();
+  bool _isImageSource(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('.jpg') ||
+        lower.contains('.jpeg') ||
+        lower.contains('.png') ||
+        lower.contains('.webp') ||
+        lower.contains('.gif') ||
+        lower.contains('capitulos_paginas') ||
+        lower.contains('capitulos_imagenes') ||
+        lower.contains('/images%2f') ||
+        lower.contains('/images/')) {
+      return true;
     }
+    return false;
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadPDF() async {
+  Future<void> _loadContent() async {
     setState(() => _isLoading = true);
-    try {
-      final raw = widget.pdfUrl.trim();
-      final url = raw.isNotEmpty
-          ? raw
-          : 'https://firebasestorage.googleapis.com/v0/b/latin-manga.appspot.com/o/pdfs%2F5fac889b-1ed8-496f-b7f1-d0092c68f2ae?alt=media';
 
-      // Si es un archivo local existente
-      if (File(url).existsSync()) {
-        setState(() {
-          _pdfPath = url;
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // Si es una URL web/remota
-      final dir = await getTemporaryDirectory();
-      final sanitizedTitle =
-          widget.mangaTitle.replaceAll(RegExp(r'[^\w\s]+'), '_');
-      final file = File('${dir.path}/$sanitizedTitle.pdf');
-
-      if (!await file.exists()) {
-        final response = await http.get(Uri.parse(url));
-        if (response.statusCode == 200) {
-          await file.writeAsBytes(response.bodyBytes);
-        } else {
-          throw Exception('Código de respuesta: ${response.statusCode}');
-        }
-      }
-
+    // 1. Si ya se proporcionó una lista de imágenes directas
+    if (widget.pageImages != null && widget.pageImages!.isNotEmpty) {
       setState(() {
-        _pdfPath = file.path;
+        _effectiveImages = List<String>.from(widget.pageImages!);
+        _totalPages = _effectiveImages.length;
         _isLoading = false;
       });
+      return;
+    }
+
+    final raw = widget.pdfUrl.trim();
+    if (raw.isEmpty) {
+      setState(() {
+        _effectiveImages = [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // 2. Si la URL es reconocible como imagen por su nombre/ruta
+    if (_isImageSource(raw)) {
+      setState(() {
+        _effectiveImages = [raw];
+        _totalPages = 1;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // 3. Si es un archivo local existente en disco
+    final localFile = File(raw);
+    if (localFile.existsSync()) {
+      try {
+        final bytes = await localFile.readAsBytes();
+        final isPdf = bytes.length >= 4 &&
+            bytes[0] == 0x25 &&
+            bytes[1] == 0x50 &&
+            bytes[2] == 0x44 &&
+            bytes[3] == 0x46; // "%PDF"
+
+        if (isPdf) {
+          setState(() {
+            _pdfPath = raw;
+            _isLoading = false;
+          });
+          return;
+        } else {
+          setState(() {
+            _effectiveImages = [raw];
+            _totalPages = 1;
+            _isLoading = false;
+          });
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error leyendo archivo local: $e');
+      }
+    }
+
+    // 4. Si es una URL remota de red
+    try {
+      final dir = await getTemporaryDirectory();
+      final hash = raw.hashCode.abs().toString();
+      final safeTitle = widget.mangaTitle.replaceAll(RegExp(r'[^\w\s]+'), '_');
+
+      final response = await http.get(Uri.parse(raw));
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        // Comprobar la firma mágica del archivo binario
+        final isPdf = bytes.length >= 4 &&
+            bytes[0] == 0x25 &&
+            bytes[1] == 0x50 &&
+            bytes[2] == 0x44 &&
+            bytes[3] == 0x46; // "%PDF"
+
+        if (isPdf) {
+          final file = File('${dir.path}/${safeTitle}_$hash.pdf');
+          await file.writeAsBytes(bytes);
+          setState(() {
+            _pdfPath = file.path;
+            _isLoading = false;
+          });
+        } else {
+          // No es PDF, es una foto/imagen de scanlation
+          final file = File('${dir.path}/${safeTitle}_$hash.jpg');
+          await file.writeAsBytes(bytes);
+          setState(() {
+            _effectiveImages = [file.path];
+            _totalPages = 1;
+            _isLoading = false;
+          });
+        }
+      } else {
+        throw Exception('Status code: ${response.statusCode}');
+      }
     } catch (e) {
-      debugPrint('Error al preparar PDF: $e');
-      setState(() => _isLoading = false);
-      Fluttertoast.showToast(msg: 'Cargando visualizador alternativo...');
+      debugPrint('Error descargando contenido: $e');
+      setState(() {
+        _effectiveImages = [raw];
+        _totalPages = 1;
+        _isLoading = false;
+      });
     }
   }
 
@@ -227,7 +295,7 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
-                    onPressed: () => _loadPDF(),
+                    onPressed: () => _loadContent(),
                   ),
                 ],
               ),

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:aplicacion_manga/Screens/admin/admin_moderation_screen.dart';
 import 'package:aplicacion_manga/Screens/admin/admin_upload_screen.dart';
 import 'package:aplicacion_manga/Screens/admin_pagina_principal.dart';
@@ -8,10 +9,12 @@ import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 class KuroAdminOverviewScreen extends StatefulWidget {
   const KuroAdminOverviewScreen({Key? key}) : super(key: key);
@@ -2317,9 +2320,21 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                               fontWeight: FontWeight.w800)),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white70, size: 20),
-                    onPressed: () => Navigator.pop(ctx),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, color: KuroTheme.cyan, size: 19),
+                        tooltip: 'Editar datos y foto',
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showEditMangaDialog(manga);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white70, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -2612,6 +2627,26 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                         return ListTile(
                           dense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          onTap: () {
+                            final List<String> paginasList = (cap['paginas'] as List?)
+                                ?.map((e) => e.toString())
+                                .where((s) => s.isNotEmpty)
+                                .toList() ?? [];
+
+                            if (capPdf.isNotEmpty || paginasList.isNotEmpty) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => OnlineViewScreen(
+                                    pdfUrl: capPdf,
+                                    pageImages: paginasList.isNotEmpty ? paginasList : null,
+                                    mangaTitle: '$title - Cap $capNum',
+                                    chapterTitle: capNombre,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                           leading: Container(
                             width: 36,
                             height: 36,
@@ -2658,16 +2693,23 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                               style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted),
                             ),
                           ),
-                          trailing: capPdf.isNotEmpty
+                          trailing: (capPdf.isNotEmpty || (cap['paginas'] != null && (cap['paginas'] as List).isNotEmpty))
                               ? IconButton(
                                   icon: const Icon(Icons.chrome_reader_mode, color: KuroTheme.cyan, size: 18),
                                   onPressed: () {
+                                    final List<String> paginasList = (cap['paginas'] as List?)
+                                        ?.map((e) => e.toString())
+                                        .where((s) => s.isNotEmpty)
+                                        .toList() ?? [];
+
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => OnlineViewScreen(
                                           pdfUrl: capPdf,
+                                          pageImages: paginasList.isNotEmpty ? paginasList : null,
                                           mangaTitle: '$title - Cap $capNum',
+                                          chapterTitle: capNombre,
                                         ),
                                       ),
                                     );
@@ -2741,11 +2783,17 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                                   color: Colors.black,
                                   fontWeight: FontWeight.w800)),
                           onPressed: () {
+                            final List<String> mangaPages = (manga['paginas'] as List?)
+                                ?.map((e) => e.toString())
+                                .where((s) => s.isNotEmpty)
+                                .toList() ?? [];
+
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => OnlineViewScreen(
                                   pdfUrl: pdfUrl,
+                                  pageImages: mangaPages.isNotEmpty ? mangaPages : null,
                                   mangaTitle: title,
                                 ),
                               ),
@@ -2791,23 +2839,42 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: KuroTheme.cyan),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.edit, color: KuroTheme.cyan, size: 15),
+                      label: Text('EDITAR',
+                          style: KuroTheme.mono(
+                              fontSize: 8.5, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
+                      onPressed: () {
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        _showEditMangaDialog(manga);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: KuroTheme.border),
                         padding: const EdgeInsets.symmetric(vertical: 11),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
-                      icon: const Icon(Icons.edit_note,
-                          color: Colors.white, size: 16),
+                      icon: const Icon(Icons.sync_alt,
+                          color: Colors.white, size: 15),
                       label: Text('ESTADO',
                           style: KuroTheme.mono(
-                              fontSize: 9, color: Colors.white)),
+                              fontSize: 8.5, color: Colors.white)),
                       onPressed: () {
                         if (ctx.mounted) Navigator.pop(ctx);
                         _editMangaSheet(manga);
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
@@ -2817,10 +2884,10 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                             borderRadius: BorderRadius.circular(8)),
                       ),
                       icon: const Icon(Icons.cloud_upload_outlined,
-                          color: Colors.white, size: 16),
-                      label: Text('+ CAPÍTULO',
+                          color: Colors.white, size: 15),
+                      label: Text('+ CAP',
                           style: KuroTheme.mono(
-                              fontSize: 9,
+                              fontSize: 8.5,
                               color: Colors.white,
                               fontWeight: FontWeight.w800)),
                       onPressed: () {
@@ -3141,6 +3208,15 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.edit, color: KuroTheme.cyan),
+              title: Text('Editar datos y foto de la obra',
+                  style: KuroTheme.mono(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showEditMangaDialog(manga);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.cloud_upload, color: KuroTheme.crimson),
               title: Text('Subir nuevo capítulo a esta serie',
                   style: KuroTheme.mono(fontSize: 11, color: Colors.white)),
@@ -3166,6 +3242,393 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showEditMangaDialog(Map<String, dynamic> manga) {
+    final docId = (manga['docId'] ?? manga['id'] ?? '').toString();
+    if (docId.isEmpty) {
+      Fluttertoast.showToast(msg: 'No se puede editar: falta ID de Firestore');
+      return;
+    }
+
+    final titleCtrl = TextEditingController(text: (manga['title'] ?? '').toString());
+    final authorCtrl = TextEditingController(text: (manga['author'] ?? manga['autor'] ?? '').toString());
+    final imageCtrl = TextEditingController(text: (manga['imageUrl'] ?? '').toString());
+    final descCtrl = TextEditingController(text: (manga['description'] ?? manga['sinopsis'] ?? '').toString());
+
+    String selectedCategory = (manga['category'] ?? manga['mangaCategoryName'] ?? 'Shonen').toString();
+    String selectedStatus = (manga['status'] ?? 'EN EMISIÓN').toString().toUpperCase();
+    if (selectedStatus != 'EN EMISIÓN' && selectedStatus != 'PAUSADO' && selectedStatus != 'FINALIZADO') {
+      selectedStatus = 'EN EMISIÓN';
+    }
+
+    File? localCoverFile;
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: KuroTheme.backgroundSecondary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        side: BorderSide(color: KuroTheme.border),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              top: 16,
+              left: 20,
+              right: 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(width: 4, height: 14, color: KuroTheme.crimson),
+                          const SizedBox(width: 8),
+                          Text(
+                            'EDITAR OBRA // METADATOS Y PORTADA',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: KuroTheme.textMuted, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Portada actual + Botón para cambiar foto
+                  Center(
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: 100,
+                            height: 140,
+                            color: KuroTheme.cardLighter,
+                            child: localCoverFile != null
+                                ? Image.file(localCoverFile!, fit: BoxFit.cover)
+                                : (imageCtrl.text.isNotEmpty
+                                    ? Image.network(
+                                        imageCtrl.text,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Center(
+                                          child: Icon(Icons.broken_image, color: KuroTheme.textMuted, size: 30),
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Icon(Icons.image, color: KuroTheme.textMuted, size: 30),
+                                      )),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: KuroTheme.purple.withValues(alpha: 0.3),
+                            side: const BorderSide(color: KuroTheme.purple),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                          icon: const Icon(Icons.photo_camera, size: 14, color: Colors.white),
+                          label: Text(
+                            'CAMBIAR FOTO DESDE GALERÍA',
+                            style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w700),
+                          ),
+                          onPressed: () async {
+                            try {
+                              final picker = ImagePicker();
+                              final img = await picker.pickImage(source: ImageSource.gallery);
+                              if (img != null) {
+                                setModalState(() {
+                                  localCoverFile = File(img.path);
+                                });
+                              }
+                            } catch (e) {
+                              Fluttertoast.showToast(msg: 'Error al abrir galería: $e');
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Título
+                  Text('TÍTULO DE LA SERIE', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: KuroTheme.cardLighter,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: KuroTheme.border),
+                    ),
+                    child: TextField(
+                      controller: titleCtrl,
+                      style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w700),
+                      decoration: const InputDecoration(border: InputBorder.none),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Autor
+                  Text('AUTOR / MANGAKA', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: KuroTheme.cardLighter,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: KuroTheme.border),
+                    ),
+                    child: TextField(
+                      controller: authorCtrl,
+                      style: KuroTheme.mono(fontSize: 11, color: Colors.white),
+                      decoration: const InputDecoration(border: InputBorder.none),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Categoría y Estado en una fila
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('CATEGORÍA', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                            const SizedBox(height: 4),
+                            Container(
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: KuroTheme.cardLighter,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: KuroTheme.border),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: ['Shonen', 'Seinen', 'Romance', 'Gore', 'Dark Fantasy', 'Acción', 'Comedia', 'Sobrenatural'].contains(selectedCategory)
+                                      ? selectedCategory
+                                      : 'Shonen',
+                                  dropdownColor: KuroTheme.backgroundSecondary,
+                                  isExpanded: true,
+                                  items: ['Shonen', 'Seinen', 'Romance', 'Gore', 'Dark Fantasy', 'Acción', 'Comedia', 'Sobrenatural'].map((cat) {
+                                    return DropdownMenuItem<String>(
+                                      value: cat,
+                                      child: Text(cat, style: KuroTheme.mono(fontSize: 11, color: Colors.white)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) setModalState(() => selectedCategory = val);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('ESTADO', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                            const SizedBox(height: 4),
+                            Container(
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: KuroTheme.cardLighter,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: KuroTheme.border),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedStatus,
+                                  dropdownColor: KuroTheme.backgroundSecondary,
+                                  isExpanded: true,
+                                  items: ['EN EMISIÓN', 'PAUSADO', 'FINALIZADO'].map((st) {
+                                    return DropdownMenuItem<String>(
+                                      value: st,
+                                      child: Text(st, style: KuroTheme.mono(fontSize: 11, color: Colors.white)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) setModalState(() => selectedStatus = val);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // URL de Portada (opcional/manual)
+                  Text('O URL DIRECTA DE PORTADA', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: KuroTheme.cardLighter,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: KuroTheme.border),
+                    ),
+                    child: TextField(
+                      controller: imageCtrl,
+                      onChanged: (_) => setModalState(() {}),
+                      style: KuroTheme.mono(fontSize: 10.5, color: KuroTheme.cyan),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'https://ejemplo.com/portada.jpg',
+                        hintStyle: TextStyle(fontSize: 10, color: KuroTheme.textMuted),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Sinopsis
+                  Text('SINOPSIS / DESCRIPCIÓN', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 80,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: KuroTheme.cardLighter,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: KuroTheme.border),
+                    ),
+                    child: TextField(
+                      controller: descCtrl,
+                      maxLines: 3,
+                      style: KuroTheme.body(fontSize: 11, color: Colors.white),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Escribe una breve sinopsis de la obra...',
+                        hintStyle: TextStyle(fontSize: 10, color: KuroTheme.textMuted),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Botón Guardar Cambios
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: KuroTheme.crimson,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: isSaving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.save, size: 18, color: Colors.white),
+                      label: Text(
+                        isSaving ? 'GUARDANDO CAMBIOS...' : 'GUARDAR CAMBIOS EN FIRESTORE',
+                        style: KuroTheme.mono(fontSize: 10.5, color: Colors.white, fontWeight: FontWeight.w800),
+                      ),
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              final newTitle = titleCtrl.text.trim();
+                              if (newTitle.isEmpty) {
+                                Fluttertoast.showToast(msg: 'El título no puede estar vacío');
+                                return;
+                              }
+
+                              setModalState(() => isSaving = true);
+                              try {
+                                String finalCoverUrl = imageCtrl.text.trim();
+
+                                // Si seleccionó una foto local, subir a Firebase Storage
+                                if (localCoverFile != null && localCoverFile!.existsSync()) {
+                                  try {
+                                    final fileName = 'cover_${docId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                                    final storageRef = FirebaseStorage.instance.ref().child('images').child(fileName);
+                                    final uploadTask = await storageRef.putFile(localCoverFile!);
+                                    finalCoverUrl = await uploadTask.ref.getDownloadURL();
+                                  } catch (e) {
+                                    debugPrint('Storage error uploading cover: $e');
+                                    finalCoverUrl = localCoverFile!.path;
+                                  }
+                                }
+
+                                await KuroAdminBackendService.instance.updateManga(
+                                  docId: docId,
+                                  title: newTitle,
+                                  author: authorCtrl.text.trim().isNotEmpty ? authorCtrl.text.trim() : 'Autor no especificado',
+                                  category: selectedCategory,
+                                  status: selectedStatus,
+                                  imageUrl: finalCoverUrl.isNotEmpty ? finalCoverUrl : null,
+                                  description: descCtrl.text.trim(),
+                                );
+
+                                // Actualizar el mapa local del manga
+                                setState(() {
+                                  manga['title'] = newTitle;
+                                  manga['author'] = authorCtrl.text.trim();
+                                  manga['category'] = selectedCategory;
+                                  manga['mangaCategoryName'] = selectedCategory;
+                                  manga['status'] = selectedStatus;
+                                  if (finalCoverUrl.isNotEmpty) manga['imageUrl'] = finalCoverUrl;
+                                  manga['description'] = descCtrl.text.trim();
+                                });
+
+                                _cargarCatalogo();
+
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                Fluttertoast.showToast(
+                                  msg: '¡Datos y portada de "$newTitle" actualizados!',
+                                  backgroundColor: KuroTheme.purple,
+                                );
+                              } catch (e) {
+                                setModalState(() => isSaving = false);
+                                Fluttertoast.showToast(msg: 'Error al actualizar: $e');
+                              }
+                            },
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

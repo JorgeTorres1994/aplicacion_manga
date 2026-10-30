@@ -679,6 +679,10 @@ class _MangaDetailsState extends State<MangaDetails> {
                       final tomoStr = data['tomo']?.toString() ?? 'Tomo 01';
                       final pdf = data['pdfUrl']?.toString() ?? currentManga.pdfUrl;
                       final pages = data['numberPages']?.toString() ?? '32';
+                      final List<String> paginasList = (data['paginas'] as List?)
+                          ?.map((e) => e.toString())
+                          .where((s) => s.isNotEmpty)
+                          .toList() ?? [];
 
                       return _buildChapterItem(
                         '#$numStr',
@@ -688,6 +692,7 @@ class _MangaDetailsState extends State<MangaDetails> {
                         currentManga: currentManga,
                         pdfUrl: pdf,
                         tomo: tomoStr,
+                        pageImages: paginasList.isNotEmpty ? paginasList : null,
                       );
                     },
                   );
@@ -1008,6 +1013,7 @@ class _MangaDetailsState extends State<MangaDetails> {
     required dynamic currentManga,
     String? pdfUrl,
     String? tomo,
+    List<String>? pageImages,
   }) {
     final viewedProvider = Provider.of<ViewedMangaProvider>(context, listen: false);
     final targetPdf = (pdfUrl != null && pdfUrl.isNotEmpty) ? pdfUrl : currentManga.pdfUrl;
@@ -1022,7 +1028,9 @@ class _MangaDetailsState extends State<MangaDetails> {
             MaterialPageRoute(
               builder: (ctx) => OnlineViewScreen(
                 pdfUrl: targetPdf,
+                pageImages: pageImages,
                 mangaTitle: '${currentManga.title} $num',
+                chapterTitle: title,
               ),
             ),
           );

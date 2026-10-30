@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 class KuroAdminBackendService {
   final FirebaseFirestore? _firestore;
@@ -360,6 +361,45 @@ class KuroAdminBackendService {
         'pdfUrl': '',
         'fecha_creacion': FieldValue.serverTimestamp(),
       });
+    }
+  }
+
+  Future<void> updateManga({
+    required String docId,
+    required String title,
+    required String author,
+    required String category,
+    required String status,
+    String? imageUrl,
+    String? description,
+    List<String>? tags,
+  }) async {
+    try {
+      final fs = _safeFirestore;
+      if (fs != null && docId.isNotEmpty) {
+        final Map<String, dynamic> updateData = {
+          'title': title.trim(),
+          'author': author.trim(),
+          'mangaCategoryName': category.trim(),
+          'category': category.trim(),
+          'status': status.trim(),
+          'fecha_actualizacion': FieldValue.serverTimestamp(),
+        };
+        if (imageUrl != null && imageUrl.trim().isNotEmpty) {
+          updateData['imageUrl'] = imageUrl.trim();
+        }
+        if (description != null) {
+          updateData['description'] = description.trim();
+          updateData['sinopsis'] = description.trim();
+        }
+        if (tags != null && tags.isNotEmpty) {
+          updateData['tags'] = tags;
+        }
+        await fs.collection('mangas').doc(docId).update(updateData);
+      }
+    } catch (e) {
+      debugPrint('Error updating manga: $e');
+      rethrow;
     }
   }
 
