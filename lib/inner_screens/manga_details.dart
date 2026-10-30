@@ -18,7 +18,7 @@ class MangaDetails extends StatefulWidget {
   const MangaDetails({Key? key}) : super(key: key);
 
   @override
-  _MangaDetailsState createState() => _MangaDetailsState();
+  State<MangaDetails> createState() => _MangaDetailsState();
 }
 
 class _MangaDetailsState extends State<MangaDetails> {
@@ -27,6 +27,8 @@ class _MangaDetailsState extends State<MangaDetails> {
   bool _isExpandedSynopsis = false;
   int _selectedTab = 0; // 0: Capítulos, 1: Tomos, 2: Comunidad
   double _userRating = 5.0;
+  String? _selectedFilterTomo;
+  bool _sortDescending = false;
 
   @override
   void dispose() {
@@ -490,99 +492,260 @@ class _MangaDetailsState extends State<MangaDetails> {
 
             const SizedBox(height: 20),
 
-            // Tab Bar: Capítulos (376), Tomos (41), Comunidad (1.4k)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: KuroTheme.card,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: KuroTheme.border),
-                ),
-                child: Row(
-                  children: [
-                    _buildTabButton('Capítulos (376)', 0),
-                    _buildTabButton('Tomos (41)', 1),
-                    _buildTabButton('Comunidad (1.4k)', 2),
-                  ],
-                ),
-              ),
+            // Tab Bar: Capítulos, Tomos, Comunidad
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('mangas')
+                  .doc(currentManga.id)
+                  .collection('capitulos')
+                  .snapshots(),
+              builder: (context, capSnap) {
+                final totalCaps = capSnap.hasData ? capSnap.data!.docs.length : 0;
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('mangas')
+                      .doc(currentManga.id)
+                      .collection('tomos')
+                      .snapshots(),
+                  builder: (context, tomoSnap) {
+                    final totalTomos = tomoSnap.hasData ? tomoSnap.data!.docs.length : 0;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: KuroTheme.card,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: KuroTheme.border),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildTabButton('Capítulos ($totalCaps)', 0),
+                            _buildTabButton('Tomos ($totalTomos)', 1),
+                            _buildTabButton('Comunidad (${_comments.length + 2})', 2),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
 
             const SizedBox(height: 14),
 
-            // Quick Last Read
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: KuroTheme.cardDecoration(borderColor: KuroTheme.crimson.withValues(alpha: 0.5)),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: KuroTheme.crimson.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(Icons.play_arrow, color: KuroTheme.crimson, size: 18),
+            // Tab 0: Capítulos
+            if (_selectedTab == 0) ...[
+              if (_selectedFilterTomo != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: KuroTheme.purple.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: KuroTheme.purple),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.filter_list, size: 14, color: KuroTheme.purple),
+                            const SizedBox(width: 6),
+                            Text('Filtrando por: ', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textMuted)),
+                            Text(_selectedFilterTomo!, style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _selectedFilterTomo = null),
+                          child: Text('VER TODOS [X]', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.crimson, fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Controles de Orden (ASC / DESC)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('LISTADO DE CAPÍTULOS', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                    GestureDetector(
+                      onTap: () => setState(() => _sortDescending = !_sortDescending),
+                      child: Row(
                         children: [
-                          Text('ÚLTIMO LEÍDO  Pág 18/34', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
-                          Text('Cap. 142: El Festín de...', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                          Icon(_sortDescending ? Icons.arrow_downward : Icons.arrow_upward, size: 12, color: KuroTheme.cyan),
+                          const SizedBox(width: 4),
+                          Text(_sortDescending ? 'DESCENDENTE' : 'ASCENDENTE', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: KuroTheme.crimson,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text('CONTINUAR', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
                     ),
                   ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('mangas')
+                    .doc(currentManga.id)
+                    .collection('capitulos')
+                    .orderBy('numero', descending: _sortDescending)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(color: KuroTheme.crimson, strokeWidth: 2),
+                      ),
+                    );
+                  }
 
-            // Chapter Rows
-            _buildChapterItem('#143', 'Llamas en la Colina de la...', 'Tomo 17 • 32 Páginas • Hace 3 días', isDownloaded: false, currentManga: currentManga),
-            _buildChapterItem('#141', 'La Torre de la Convicción', 'Leído • Descargado', isDownloaded: true, currentManga: currentManga),
-            _buildChapterItem('#140', 'El Monstruo en las Tinieblas...', 'Leído', isDownloaded: false, currentManga: currentManga),
-            _buildChapterItem('#139', 'Visiones del Banquete M...', 'Leído', isDownloaded: false, currentManga: currentManga),
+                  final docs = snapshot.data?.docs ?? [];
+                  var filteredDocs = docs;
+                  if (_selectedFilterTomo != null) {
+                    filteredDocs = docs.where((d) {
+                      final data = d.data() as Map<String, dynamic>;
+                      return (data['tomo']?.toString() ?? '') == _selectedFilterTomo;
+                    }).toList();
+                  }
 
-            const SizedBox(height: 10),
+                  if (filteredDocs.isEmpty) {
+                    if (currentManga.pdfUrl.isNotEmpty && _selectedFilterTomo == null) {
+                      return Column(
+                        children: [
+                          _buildChapterItem(
+                            '#01',
+                            'Capítulo Principal / Obra Completa',
+                            'Lectura original integrada • 42 Páginas',
+                            isDownloaded: false,
+                            currentManga: currentManga,
+                            pdfUrl: currentManga.pdfUrl,
+                          ),
+                        ],
+                      );
+                    }
 
-            // Button: VER LOS 376 CAPÍTULOS COMPLETOS
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: KuroTheme.cardLighter,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: KuroTheme.border),
-                ),
-                child: Center(
-                  child: Text(
-                    'VER LOS 376 CAPÍTULOS COMPLETOS',
-                    style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textGrey, fontWeight: FontWeight.w700),
-                  ),
-                ),
+                    return Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(Icons.menu_book, color: KuroTheme.textMuted, size: 36),
+                            const SizedBox(height: 8),
+                            Text(
+                              _selectedFilterTomo != null
+                                  ? 'No hay capítulos en $_selectedFilterTomo'
+                                  : 'Aún no hay capítulos publicados para esta serie',
+                              style: KuroTheme.body(fontSize: 11, color: KuroTheme.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredDocs.length,
+                    itemBuilder: (context, index) {
+                      final data = filteredDocs[index].data() as Map<String, dynamic>;
+                      final numStr = data['capituloDisplay']?.toString() ?? data['numero']?.toString() ?? '${index + 1}';
+                      final titleStr = data['nombre']?.toString() ?? 'Capítulo $numStr';
+                      final tomoStr = data['tomo']?.toString() ?? 'Tomo 01';
+                      final pdf = data['pdfUrl']?.toString() ?? currentManga.pdfUrl;
+                      final pages = data['numberPages']?.toString() ?? '32';
+
+                      return _buildChapterItem(
+                        '#$numStr',
+                        titleStr,
+                        '$tomoStr • $pages Páginas',
+                        isDownloaded: false,
+                        currentManga: currentManga,
+                        pdfUrl: pdf,
+                        tomo: tomoStr,
+                      );
+                    },
+                  );
+                },
               ),
-            ),
+            ],
 
-            const SizedBox(height: 24),
+            // Tab 1: Tomos
+            if (_selectedTab == 1) ...[
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('mangas')
+                    .doc(currentManga.id)
+                    .collection('tomos')
+                    .orderBy('numero')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(color: KuroTheme.purple, strokeWidth: 2),
+                      ),
+                    );
+                  }
+
+                  final docs = snapshot.data?.docs ?? [];
+                  if (docs.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(Icons.collections_bookmark_outlined, color: KuroTheme.textMuted, size: 36),
+                            const SizedBox(height: 8),
+                            Text('No hay tomos definidos independientemente.',
+                                style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                            const SizedBox(height: 4),
+                            Text('El administrador puede registrar tomos y asociar capítulos desde Kuro Admin Suite.',
+                                textAlign: TextAlign.center,
+                                style: KuroTheme.body(fontSize: 10.5, color: KuroTheme.textMuted)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final tomo = docs[index].data() as Map<String, dynamic>;
+                      final tomoNombre = tomo['nombre']?.toString() ?? 'Tomo ${index + 1}';
+                      final tomoNumero = tomo['numero'] is int
+                          ? tomo['numero'] as int
+                          : (int.tryParse(tomo['numero']?.toString() ?? '') ?? (index + 1));
+
+                      return _buildTomoItem(
+                        tomoNombre: tomoNombre,
+                        tomoNumero: tomoNumero,
+                        mangaId: currentManga.id,
+                        onTap: () {
+                          setState(() {
+                            _selectedFilterTomo = tomoNombre;
+                            _selectedTab = 0;
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+
+            // Tab 2: Comunidad
+            if (_selectedTab == 2) ...[
 
             // Section: DISCUSIÓN DE LA COMUNIDAD // RESEÑAS
             Padding(
@@ -724,6 +887,7 @@ class _MangaDetailsState extends State<MangaDetails> {
                 ),
               ),
             ),
+          ],
 
             const SizedBox(height: 30),
           ],
@@ -823,37 +987,158 @@ class _MangaDetailsState extends State<MangaDetails> {
     String sub, {
     required bool isDownloaded,
     required dynamic currentManga,
+    String? pdfUrl,
+    String? tomo,
   }) {
+    final viewedProvider = Provider.of<ViewedMangaProvider>(context, listen: false);
+    final targetPdf = (pdfUrl != null && pdfUrl.isNotEmpty) ? pdfUrl : currentManga.pdfUrl;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: KuroTheme.cardDecoration(),
-        child: Row(
-          children: [
-            Text(num, style: KuroTheme.mono(fontSize: 11, color: KuroTheme.textMuted, fontWeight: FontWeight.w700)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1),
-                  Text(sub, style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted), maxLines: 1),
-                ],
+      child: GestureDetector(
+        onTap: () {
+          viewedProvider.addMangasToHistory(mangaId: currentManga.id);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (ctx) => OnlineViewScreen(
+                pdfUrl: targetPdf,
+                mangaTitle: '${currentManga.title} $num',
               ),
             ),
-            if (isDownloaded)
-              const Icon(Icons.check_circle_outline, color: KuroTheme.cyan, size: 18)
-            else
-              IconButton(
-                icon: const Icon(Icons.file_download_outlined, color: KuroTheme.textGrey, size: 18),
-                onPressed: () => _downloadPDF(currentManga.pdfUrl, currentManga.title),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: KuroTheme.cardDecoration(),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: KuroTheme.purple.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: KuroTheme.purple.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  num,
+                  style: KuroTheme.mono(fontSize: 10, color: KuroTheme.purple, fontWeight: FontWeight.w700),
+                ),
               ),
-            const SizedBox(width: 4),
-            const Icon(Icons.arrow_forward_ios, color: KuroTheme.textMuted, size: 12),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1),
+                    Text(sub, style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted), maxLines: 1),
+                  ],
+                ),
+              ),
+              if (isDownloaded)
+                const Icon(Icons.check_circle_outline, color: KuroTheme.cyan, size: 18)
+              else if (targetPdf.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.file_download_outlined, color: KuroTheme.textGrey, size: 18),
+                  onPressed: () => _downloadPDF(targetPdf, '${currentManga.title} $num'),
+                ),
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_forward_ios, color: KuroTheme.textMuted, size: 12),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTomoItem({
+    required String tomoNombre,
+    required int tomoNumero,
+    required String mangaId,
+    required VoidCallback onTap,
+  }) {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('mangas')
+          .doc(mangaId)
+          .collection('capitulos')
+          .where('tomo', isEqualTo: tomoNombre)
+          .get(),
+      builder: (context, snap) {
+        final capCount = snap.hasData ? snap.data!.docs.length : 0;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: KuroTheme.cardDecoration(),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: KuroTheme.purple.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: KuroTheme.purple.withValues(alpha: 0.4)),
+                  ),
+                  child: const Icon(Icons.auto_stories, color: KuroTheme.purple, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: KuroTheme.crimson.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'VOL. $tomoNumero',
+                              style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.crimson, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            snap.connectionState == ConnectionState.waiting
+                                ? '...'
+                                : '$capCount ${capCount == 1 ? 'Capítulo' : 'Capítulos'}',
+                            style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tomoNombre,
+                        style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: KuroTheme.cardLighter,
+                    side: const BorderSide(color: KuroTheme.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                  onPressed: onTap,
+                  child: Row(
+                    children: [
+                      Text('CAPÍTULOS', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward_ios, size: 10, color: KuroTheme.cyan),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

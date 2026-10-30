@@ -18,7 +18,7 @@ class OnlineViewScreen extends StatefulWidget {
   });
 
   @override
-  _OnlineViewScreenState createState() => _OnlineViewScreenState();
+  State<OnlineViewScreen> createState() => _OnlineViewScreenState();
 }
 
 class _OnlineViewScreenState extends State<OnlineViewScreen> {
@@ -43,7 +43,8 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
           : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
 
       final dir = await getTemporaryDirectory();
-      final sanitizedTitle = widget.mangaTitle.replaceAll(RegExp(r'[^\w\s]+'), '_');
+      final sanitizedTitle =
+          widget.mangaTitle.replaceAll(RegExp(r'[^\w\s]+'), '_');
       final file = File('${dir.path}/$sanitizedTitle.pdf');
 
       if (!await file.exists()) {
@@ -77,7 +78,8 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                    icon: const Icon(Icons.arrow_back,
+                        color: Colors.white, size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 4),
@@ -91,26 +93,41 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                               widget.mangaTitle.length > 15
                                   ? '${widget.mangaTitle.substring(0, 15).toUpperCase()}...'
                                   : widget.mangaTitle.toUpperCase(),
-                              style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                              style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white),
                             ),
                             const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-                              decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(3)),
-                              child: Text('HD RAW', style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w800)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                  color: KuroTheme.crimson,
+                                  borderRadius: BorderRadius.circular(3)),
+                              child: Text('HD RAW',
+                                  style: KuroTheme.mono(
+                                      fontSize: 7.5,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800)),
                             ),
                           ],
                         ),
-                        Text('Cap. 142: El Festín de...', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textGrey)),
+                        Text('Cap. 142: El Festín de...',
+                            style: KuroTheme.mono(
+                                fontSize: 8.5, color: KuroTheme.textGrey)),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.bookmark, color: KuroTheme.crimson, size: 20),
-                    onPressed: () => Fluttertoast.showToast(msg: 'Página guardada en marcadores'),
+                    icon: const Icon(Icons.bookmark,
+                        color: KuroTheme.crimson, size: 20),
+                    onPressed: () => Fluttertoast.showToast(
+                        msg: 'Página guardada en marcadores'),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.auto_stories_outlined, color: Colors.white, size: 20),
+                    icon: const Icon(Icons.auto_stories_outlined,
+                        color: Colors.white, size: 20),
                     onPressed: () {},
                   ),
                   IconButton(
@@ -126,7 +143,8 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 padding: const EdgeInsets.all(10),
-                decoration: KuroTheme.cardDecoration(color: const Color(0xFF1B1B26)),
+                decoration:
+                    KuroTheme.cardDecoration(color: const Color(0xFF1B1B26)),
                 child: Column(
                   children: [
                     Row(
@@ -134,32 +152,50 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                         Container(
                           width: 28,
                           height: 28,
-                          decoration: BoxDecoration(color: KuroTheme.crimson.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(6)),
-                          child: const Icon(Icons.cloud_download, color: KuroTheme.crimson, size: 16),
+                          decoration: BoxDecoration(
+                              color: KuroTheme.crimson.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(6)),
+                          child: const Icon(Icons.cloud_download,
+                              color: KuroTheme.crimson, size: 16),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Descargando Tomo 41 // Cap. 143', style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700)),
-                              Text('80% completado • 4.2 MB/s', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan)),
+                              Text('Descargando Tomo 41 // Cap. 143',
+                                  style: KuroTheme.mono(
+                                      fontSize: 9.5,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700)),
+                              Text('80% completado • 4.2 MB/s',
+                                  style: KuroTheme.mono(
+                                      fontSize: 8.5, color: KuroTheme.cyan)),
                             ],
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => setState(() => _showDownloadBanner = false),
-                          child: const Icon(Icons.close, color: KuroTheme.textMuted, size: 16),
+                          onTap: () =>
+                              setState(() => _showDownloadBanner = false),
+                          child: const Icon(Icons.close,
+                              color: KuroTheme.textMuted, size: 16),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Container(
                       height: 3,
-                      decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(2)),
+                      decoration: BoxDecoration(
+                          color: KuroTheme.cardLighter,
+                          borderRadius: BorderRadius.circular(2)),
                       child: Row(
                         children: [
-                          Expanded(flex: 80, child: Container(decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(2)))),
+                          Expanded(
+                              flex: 80,
+                              child: Container(
+                                  decoration: BoxDecoration(
+                                      color: KuroTheme.crimson,
+                                      borderRadius: BorderRadius.circular(2)))),
                           const Expanded(flex: 20, child: SizedBox()),
                         ],
                       ),
@@ -195,7 +231,9 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                         child: Image.network(
                           'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1000',
                           fit: BoxFit.contain,
-                          color: _isSepia ? Colors.amber.withValues(alpha: 0.25) : null,
+                          color: _isSepia
+                              ? Colors.amber.withValues(alpha: 0.25)
+                              : null,
                           colorBlendMode: BlendMode.multiply,
                         ),
                       ),
@@ -205,7 +243,8 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                   Positioned(
                     bottom: 20,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(6),
@@ -213,7 +252,10 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                       ),
                       child: Text(
                         'PANEL $_currentPage/$_totalPages',
-                        style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w800),
+                        style: KuroTheme.mono(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800),
                       ),
                     ),
                   ),
@@ -234,19 +276,26 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(color: KuroTheme.card, borderRadius: BorderRadius.circular(6)),
-                        child: Text('Cap. Ant.', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 5),
+                        decoration: BoxDecoration(
+                            color: KuroTheme.card,
+                            borderRadius: BorderRadius.circular(6)),
+                        child: Text('Cap. Ant.',
+                            style: KuroTheme.mono(
+                                fontSize: 9, color: KuroTheme.textGrey)),
                       ),
                       const SizedBox(width: 6),
-                      const Icon(Icons.chevron_left, color: KuroTheme.textGrey, size: 20),
+                      const Icon(Icons.chevron_left,
+                          color: KuroTheme.textGrey, size: 20),
                       Expanded(
                         child: SliderTheme(
                           data: SliderTheme.of(context).copyWith(
                             thumbColor: KuroTheme.crimson,
                             activeTrackColor: KuroTheme.crimson,
                             inactiveTrackColor: KuroTheme.cardLighter,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 6),
                             trackHeight: 3,
                           ),
                           child: Slider(
@@ -261,12 +310,18 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                           ),
                         ),
                       ),
-                      const Icon(Icons.chevron_right, color: KuroTheme.textGrey, size: 20),
+                      const Icon(Icons.chevron_right,
+                          color: KuroTheme.textGrey, size: 20),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(color: KuroTheme.card, borderRadius: BorderRadius.circular(6)),
-                        child: Text('Cap. Sig.', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 5),
+                        decoration: BoxDecoration(
+                            color: KuroTheme.card,
+                            borderRadius: BorderRadius.circular(6)),
+                        child: Text('Cap. Sig.',
+                            style: KuroTheme.mono(
+                                fontSize: 9, color: KuroTheme.textGrey)),
                       ),
                     ],
                   ),
@@ -277,12 +332,25 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                     children: [
                       Row(
                         children: [
-                          Container(width: 6, height: 6, decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle)),
+                          Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                  color: KuroTheme.crimson,
+                                  shape: BoxShape.circle)),
                           const SizedBox(width: 6),
-                          Text('PÁGINA $_currentPage / $_totalPages', style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                          Text('PÁGINA $_currentPage / $_totalPages',
+                              style: KuroTheme.mono(
+                                  fontSize: 9.5,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700)),
                         ],
                       ),
-                      Text('JUMP TO: INDEX GRID', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
+                      Text('JUMP TO: INDEX GRID',
+                          style: KuroTheme.mono(
+                              fontSize: 9.5,
+                              color: KuroTheme.cyan,
+                              fontWeight: FontWeight.w700)),
                     ],
                   ),
 
@@ -296,7 +364,10 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                         label: _isRTL ? 'RTL ⇄ CASCADA' : 'CASCADA ⇄ RTL',
                         onTap: () {
                           setState(() => _isRTL = !_isRTL);
-                          Fluttertoast.showToast(msg: _isRTL ? 'Modo de lectura: RTL (Derecha a Izquierda)' : 'Modo Cascada activado');
+                          Fluttertoast.showToast(
+                              msg: _isRTL
+                                  ? 'Modo de lectura: RTL (Derecha a Izquierda)'
+                                  : 'Modo Cascada activado');
                         },
                       ),
                       const SizedBox(width: 6),
@@ -304,7 +375,8 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                         icon: Icons.aspect_ratio,
                         label: 'AJUSTAR ANCHO',
                         onTap: () {
-                          Fluttertoast.showToast(msg: 'Ajuste de ancho automático aplicado');
+                          Fluttertoast.showToast(
+                              msg: 'Ajuste de ancho automático aplicado');
                         },
                       ),
                       const SizedBox(width: 6),
@@ -358,7 +430,10 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
               const SizedBox(height: 2),
               Text(
                 label,
-                style: KuroTheme.mono(fontSize: 7, color: KuroTheme.textGrey, fontWeight: FontWeight.w700),
+                style: KuroTheme.mono(
+                    fontSize: 7,
+                    color: KuroTheme.textGrey,
+                    fontWeight: FontWeight.w700),
                 textAlign: TextAlign.center,
                 maxLines: 1,
               ),
