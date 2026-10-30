@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:aplicacion_manga/services/admin_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 class KuroAdminUploadScreen extends StatefulWidget {
   final bool isEmbedded;
@@ -37,7 +41,19 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
   bool _visibilidadInmediata = true;
   bool _notificarLectores = true;
   bool _isUploading = false;
+  String _uploadStatusText = '';
   String _selectedCategory = 'Seinen';
+
+  // 3 Modos de contenido: 0: PDF Local, 1: Fotos Locales, 2: URL Directa
+  int _uploadMode = 0;
+
+  // PDF Local
+  String? _localPdfPath;
+  String? _localPdfName;
+  int _localPdfSizeBytes = 0;
+
+  // Fotos Locales
+  List<XFile> _selectedImages = [];
 
   // Colecciones dinámicas de Firebase
   List<Map<String, dynamic>> _mangasDisponibles = [];
@@ -128,6 +144,42 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
     }
   }
 
+  Future<void> _pickLocalPdf() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final f = result.files.first;
+        setState(() {
+          _localPdfPath = f.path;
+          _localPdfName = f.name;
+          _localPdfSizeBytes = f.size;
+          pdfUrlController.text = f.path ?? '';
+        });
+        Fluttertoast.showToast(msg: 'PDF cargado: ${f.name}');
+      }
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'Error al seleccionar archivo: $e');
+    }
+  }
+
+  Future<void> _pickLocalImages() async {
+    try {
+      final picker = ImagePicker();
+      final images = await picker.pickMultiImage();
+      if (images.isNotEmpty) {
+        setState(() {
+          _selectedImages = images;
+        });
+        Fluttertoast.showToast(msg: '${images.length} fotos/páginas cargadas');
+      }
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'Error al seleccionar imágenes: $e');
+    }
+  }
+
   Future<void> _publicarCapitulo() async {
     final series = serieController.text.trim();
     if (series.isEmpty) {
@@ -138,9 +190,55 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
     final capNum = capController.text.trim().isEmpty ? '01' : capController.text.trim();
     final tomoStr = tomoController.text.trim().isEmpty ? 'Tomo 01' : tomoController.text.trim();
 
-    setState(() => _isUploading = true);
+    setState(() {
+      _isUploading = true;
+      _uploadStatusText = 'Iniciando subida...';
+    });
 
     try {
+      String finalPdfUrl = pdfUrlController.text.trim();
+      List<String> finalPages = [];
+
+      // 1. Si el modo es PDF Local y se seleccionó un PDF
+      if (_uploadMode == 0 && _localPdfPath != null) {
+        final file = File(_localPdfPath!);
+        if (file.existsSync()) {
+          setState(() => _uploadStatusText = 'Subiendo archivo PDF a Firebase Storage...');
+          try {
+            final fileName = 'cap_${DateTime.now().millisecondsSinceEpoch}_$_localPdfName';
+            final ref = FirebaseStorage.instance.ref().child('capitulos_pdfs').child(fileName);
+            final uploadTask = await ref.putFile(file);
+            finalPdfUrl = await uploadTask.ref.getDownloadURL();
+          } catch (storageError) {
+            debugPrint('Storage error: $storageError');
+            finalPdfUrl = _localPdfPath!;
+          }
+        }
+      }
+      // 2. Si el modo es Fotos Locales y se seleccionaron imágenes
+      else if (_uploadMode == 1 && _selectedImages.isNotEmpty) {
+        setState(() => _uploadStatusText = 'Subiendo ${_selectedImages.length} páginas a Firebase Storage...');
+        for (int i = 0; i < _selectedImages.length; i++) {
+          final img = _selectedImages[i];
+          try {
+            final fileName = 'pag_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+            final ref = FirebaseStorage.instance.ref().child('capitulos_paginas').child(fileName);
+            final uploadTask = await ref.putFile(File(img.path));
+            final url = await uploadTask.ref.getDownloadURL();
+            finalPages.add(url);
+          } catch (_) {
+            finalPages.add(img.path);
+          }
+        }
+        if (finalPages.isNotEmpty) {
+          finalPdfUrl = finalPages.first;
+        }
+      }
+
+      final pageCount = _uploadMode == 1 && _selectedImages.isNotEmpty
+          ? _selectedImages.length.toString()
+          : null;
+
       await KuroAdminBackendService.instance.publishChapter(
         mangaId: _selectedMangaId,
         seriesTitle: series,
@@ -153,18 +251,18 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
         tags: _selectedTags.toList(),
         instantVisibility: _visibilidadInmediata,
         notifyReaders: _notificarLectores,
+        numberPages: pageCount,
         customImageUrl: imageUrlController.text.trim().isNotEmpty
             ? imageUrlController.text.trim()
             : null,
-        customPdfUrl: pdfUrlController.text.trim().isNotEmpty
-            ? pdfUrlController.text.trim()
-            : null,
+        customPdfUrl: finalPdfUrl.isNotEmpty ? finalPdfUrl : null,
+        pageImages: finalPages.isNotEmpty ? finalPages : null,
       );
 
       setState(() => _isUploading = false);
 
       Fluttertoast.showToast(
-        msg: 'Capítulo publicado y vinculado a $series ($tomoStr) exitosamente',
+        msg: 'Capítulo $capNum publicado en $series ($tomoStr) exitosamente',
         backgroundColor: KuroTheme.crimson,
       );
 
@@ -172,6 +270,9 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
       capController.clear();
       nombreCapController.clear();
       pdfUrlController.clear();
+      _localPdfPath = null;
+      _localPdfName = null;
+      _selectedImages.clear();
 
       if (mounted) {
         if (widget.onPublished != null) {
@@ -728,7 +829,7 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
 
             const SizedBox(height: 20),
 
-            // Card 02. PAQUETE RAW / ENLACE DE ARCHIVO
+            // Card 02. ARCHIVO / PAQUETE RAW / PÁGINAS
             Container(
               padding: const EdgeInsets.all(16),
               decoration: KuroTheme.cardDecoration(),
@@ -743,93 +844,283 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
                           const Icon(Icons.archive,
                               color: KuroTheme.cyan, size: 16),
                           const SizedBox(width: 6),
-                          Text('02. ARCHIVO / PAQUETE RAW',
+                          Text('02. ARCHIVO O PÁGINAS DEL CAPÍTULO',
                               style: KuroTheme.mono(
                                   fontSize: 9.5,
                                   color: KuroTheme.textWhite,
                                   fontWeight: FontWeight.w700)),
                         ],
                       ),
-                      Text('ENLACE PDF/ZIP',
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: KuroTheme.cyan.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _uploadMode == 0 ? 'PDF' : _uploadMode == 1 ? 'FOTOS' : 'URL',
                           style: KuroTheme.mono(
-                              fontSize: 8, color: KuroTheme.textMuted)),
+                              fontSize: 8, color: KuroTheme.cyan, fontWeight: FontWeight.w700),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
-                  // Entrada de URL del PDF / Archivo
-                  Text('ENLACE O URL DEL ARCHIVO DE LECTURA',
-                      style: KuroTheme.mono(
-                          fontSize: 8.5, color: KuroTheme.textMuted)),
-                  const SizedBox(height: 6),
-                  Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                        color: KuroTheme.cardLighter,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: KuroTheme.border)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: TextField(
-                      controller: pdfUrlController,
-                      onChanged: (_) => setState(() {}),
-                      style: KuroTheme.mono(fontSize: 11, color: Colors.white),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'https://servidor-manga.com/tomo01.pdf',
-                        hintStyle: KuroTheme.mono(
-                            fontSize: 10, color: KuroTheme.textMuted),
+                  // Selector de modo de carga
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildUploadModeButton(
+                          index: 0,
+                          icon: Icons.picture_as_pdf,
+                          label: 'PDF LOCAL',
+                          isSelected: _uploadMode == 0,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: _buildUploadModeButton(
+                          index: 1,
+                          icon: Icons.photo_library,
+                          label: 'FOTOS LOCALES',
+                          isSelected: _uploadMode == 1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: _buildUploadModeButton(
+                          index: 2,
+                          icon: Icons.link,
+                          label: 'POR URL',
+                          isSelected: _uploadMode == 2,
+                        ),
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
-                  // Estado del archivo
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: KuroTheme.cardLighter,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: KuroTheme.border)),
-                    child: Row(
+                  // CONTENIDO SEGÚN EL MODO SELECCIONADO
+                  if (_uploadMode == 0) ...[
+                    // MODO 0: PDF LOCAL
+                    GestureDetector(
+                      onTap: _pickLocalPdf,
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _localPdfPath != null
+                              ? KuroTheme.cyan.withValues(alpha: 0.1)
+                              : KuroTheme.cardLighter,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _localPdfPath != null ? KuroTheme.cyan : KuroTheme.border,
+                            width: _localPdfPath != null ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: KuroTheme.crimson.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(Icons.picture_as_pdf,
+                                  color: KuroTheme.crimson, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _localPdfName ?? 'Tocar para seleccionar archivo PDF',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _localPdfSizeBytes > 0
+                                        ? '${(_localPdfSizeBytes / (1024 * 1024)).toStringAsFixed(2)} MB • Archivo PDF local listo'
+                                        : 'Elige un archivo PDF desde tu almacenamiento',
+                                    style: KuroTheme.mono(
+                                        fontSize: 8.5,
+                                        color: _localPdfPath != null
+                                            ? KuroTheme.cyan
+                                            : KuroTheme.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              _localPdfPath != null ? Icons.check_circle : Icons.upload_file,
+                              color: _localPdfPath != null ? KuroTheme.cyan : KuroTheme.textMuted,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else if (_uploadMode == 1) ...[
+                    // MODO 1: FOTOS LOCALES
+                    GestureDetector(
+                      onTap: _pickLocalImages,
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _selectedImages.isNotEmpty
+                              ? KuroTheme.purple.withValues(alpha: 0.1)
+                              : KuroTheme.cardLighter,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _selectedImages.isNotEmpty ? KuroTheme.purple : KuroTheme.border,
+                            width: _selectedImages.isNotEmpty ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: KuroTheme.purple.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(Icons.add_photo_alternate,
+                                  color: KuroTheme.purple, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedImages.isNotEmpty
+                                        ? '${_selectedImages.length} páginas seleccionadas'
+                                        : 'Tocar para elegir fotos de páginas',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _selectedImages.isNotEmpty
+                                        ? 'Selección múltiple desde la galería'
+                                        : 'Puedes elegir todas las páginas del capítulo',
+                                    style: KuroTheme.mono(
+                                        fontSize: 8.5,
+                                        color: _selectedImages.isNotEmpty
+                                            ? KuroTheme.purple
+                                            : KuroTheme.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              _selectedImages.isNotEmpty ? Icons.check_circle : Icons.photo_library,
+                              color: _selectedImages.isNotEmpty ? KuroTheme.purple : KuroTheme.textMuted,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_selectedImages.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 72,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _selectedImages.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (ctx, idx) {
+                            return Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.file(
+                                    File(_selectedImages[idx].path),
+                                    width: 54,
+                                    height: 72,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 2,
+                                  left: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.75),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      '#${idx + 1}',
+                                      style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w800),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ] else ...[
+                    // MODO 2: POR ENLACE / URL
+                    Text('ENLACE O URL DEL ARCHIVO DE LECTURA',
+                        style: KuroTheme.mono(
+                            fontSize: 8.5, color: KuroTheme.textMuted)),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                          color: KuroTheme.cardLighter,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: KuroTheme.border)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: TextField(
+                        controller: pdfUrlController,
+                        onChanged: (_) => setState(() {}),
+                        style: KuroTheme.mono(fontSize: 11, color: Colors.white),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'https://servidor-manga.com/tomo01.pdf',
+                          hintStyle: KuroTheme.mono(
+                              fontSize: 10, color: KuroTheme.textMuted),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  if (_isUploading && _uploadStatusText.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        Icon(
-                            pdfUrlController.text.isNotEmpty
-                                ? Icons.check_circle
-                                : Icons.cloud_upload_outlined,
-                            color: pdfUrlController.text.isNotEmpty
-                                ? KuroTheme.cyan
-                                : KuroTheme.textMuted,
-                            size: 20),
-                        const SizedBox(width: 10),
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: KuroTheme.cyan),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                pdfUrlController.text.isNotEmpty
-                                    ? 'Archivo enlazado listo para distribución'
-                                    : 'Sin archivo asignado (Se usará enlace estándar)',
-                                style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white),
-                              ),
-                              Text(
-                                pdfUrlController.text.isNotEmpty
-                                    ? pdfUrlController.text
-                                    : 'Ingresa un enlace directo o deja en blanco para demo',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: KuroTheme.mono(
-                                    fontSize: 8.5, color: KuroTheme.textMuted),
-                              ),
-                            ],
+                          child: Text(
+                            _uploadStatusText,
+                            style: KuroTheme.mono(fontSize: 9, color: KuroTheme.cyan),
                           ),
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -963,6 +1254,46 @@ class _KuroAdminUploadScreenState extends State<KuroAdminUploadScreen> {
             onChanged: onChanged,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUploadModeButton({
+    required int index,
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+  }) {
+    return GestureDetector(
+      onTap: () => setState(() => _uploadMode = index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? KuroTheme.crimson.withValues(alpha: 0.25)
+              : KuroTheme.cardLighter,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? KuroTheme.crimson : KuroTheme.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon,
+                color: isSelected ? KuroTheme.crimson : KuroTheme.textMuted,
+                size: 16),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: KuroTheme.mono(
+                fontSize: 8,
+                color: isSelected ? Colors.white : KuroTheme.textMuted,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -10,11 +10,15 @@ import 'package:path_provider/path_provider.dart';
 class OnlineViewScreen extends StatefulWidget {
   final String pdfUrl;
   final String mangaTitle;
+  final String? chapterTitle;
+  final List<String>? pageImages;
 
   const OnlineViewScreen({
     super.key,
     required this.pdfUrl,
     required this.mangaTitle,
+    this.chapterTitle,
+    this.pageImages,
   });
 
   @override
@@ -22,26 +26,58 @@ class OnlineViewScreen extends StatefulWidget {
 }
 
 class _OnlineViewScreenState extends State<OnlineViewScreen> {
+  PDFViewController? _pdfViewController;
+  late final PageController _pageController;
+
   String? _pdfPath;
-  int _currentPage = 12;
-  int _totalPages = 45;
+  bool _isLoading = true;
+  int _currentPage = 1;
+  int _totalPages = 1;
   bool _showDownloadBanner = true;
   bool _isRTL = true;
   bool _isSepia = false;
   double _brightness = 0.85;
 
+  List<String> _effectiveImages = [];
+
   @override
   void initState() {
-    _loadPDF();
     super.initState();
+    _pageController = PageController();
+
+    if (widget.pageImages != null && widget.pageImages!.isNotEmpty) {
+      _effectiveImages = widget.pageImages!;
+      _totalPages = _effectiveImages.length;
+      _isLoading = false;
+    } else {
+      _loadPDF();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPDF() async {
+    setState(() => _isLoading = true);
     try {
-      final url = widget.pdfUrl.isNotEmpty
-          ? widget.pdfUrl
-          : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+      final raw = widget.pdfUrl.trim();
+      final url = raw.isNotEmpty
+          ? raw
+          : 'https://firebasestorage.googleapis.com/v0/b/latin-manga.appspot.com/o/pdfs%2F5fac889b-1ed8-496f-b7f1-d0092c68f2ae?alt=media';
 
+      // Si es un archivo local existente
+      if (File(url).existsSync()) {
+        setState(() {
+          _pdfPath = url;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Si es una URL web/remota
       final dir = await getTemporaryDirectory();
       final sanitizedTitle =
           widget.mangaTitle.replaceAll(RegExp(r'[^\w\s]+'), '_');
@@ -49,20 +85,80 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
 
       if (!await file.exists()) {
         final response = await http.get(Uri.parse(url));
-        await file.writeAsBytes(response.bodyBytes);
+        if (response.statusCode == 200) {
+          await file.writeAsBytes(response.bodyBytes);
+        } else {
+          throw Exception('Código de respuesta: ${response.statusCode}');
+        }
       }
 
       setState(() {
         _pdfPath = file.path;
+        _isLoading = false;
       });
     } catch (e) {
-      print('Error al preparar PDF: $e');
+      debugPrint('Error al preparar PDF: $e');
+      setState(() => _isLoading = false);
       Fluttertoast.showToast(msg: 'Cargando visualizador alternativo...');
     }
   }
 
+  void _goToPreviousPage() {
+    if (_effectiveImages.isNotEmpty) {
+      if (_currentPage > 1) {
+        _pageController.previousPage(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        Fluttertoast.showToast(msg: 'Primera página alcanzada');
+      }
+    } else if (_pdfViewController != null) {
+      if (_currentPage > 1) {
+        final target = _currentPage - 2; // 0-based index
+        _pdfViewController!.setPage(target);
+        setState(() => _currentPage--);
+      } else {
+        Fluttertoast.showToast(msg: 'Primera página alcanzada');
+      }
+    }
+  }
+
+  void _goToNextPage() {
+    if (_effectiveImages.isNotEmpty) {
+      if (_currentPage < _totalPages) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        Fluttertoast.showToast(msg: 'Última página alcanzada');
+      }
+    } else if (_pdfViewController != null) {
+      if (_currentPage < _totalPages) {
+        final target = _currentPage; // 0-based target index
+        _pdfViewController!.setPage(target);
+        setState(() => _currentPage++);
+      } else {
+        Fluttertoast.showToast(msg: 'Última página alcanzada');
+      }
+    }
+  }
+
+  void _jumpToPage(int page) {
+    final target = page.clamp(1, _totalPages > 0 ? _totalPages : 1);
+    if (_effectiveImages.isNotEmpty) {
+      _pageController.jumpToPage(target - 1);
+    } else if (_pdfViewController != null) {
+      _pdfViewController!.setPage(target - 1);
+    }
+    setState(() => _currentPage = target);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final displayChapter = widget.chapterTitle ?? 'Capítulo en Lectura';
+
     return Scaffold(
       backgroundColor: KuroTheme.background,
       body: SafeArea(
@@ -89,14 +185,16 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              widget.mangaTitle.length > 15
-                                  ? '${widget.mangaTitle.substring(0, 15).toUpperCase()}...'
-                                  : widget.mangaTitle.toUpperCase(),
-                              style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white),
+                            Flexible(
+                              child: Text(
+                                widget.mangaTitle.toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white),
+                              ),
                             ),
                             const SizedBox(width: 6),
                             Container(
@@ -113,32 +211,29 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                             ),
                           ],
                         ),
-                        Text('Cap. 142: El Festín de...',
+                        Text(displayChapter,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: KuroTheme.mono(
                                 fontSize: 8.5, color: KuroTheme.textGrey)),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.bookmark,
+                    icon: const Icon(Icons.bookmark_outline,
                         color: KuroTheme.crimson, size: 20),
                     onPressed: () => Fluttertoast.showToast(
-                        msg: 'Página guardada en marcadores'),
+                        msg: 'Página $_currentPage guardada en marcadores'),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.auto_stories_outlined,
-                        color: Colors.white, size: 20),
-                    onPressed: () {},
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.tune, color: Colors.white, size: 20),
-                    onPressed: () {},
+                    icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                    onPressed: () => _loadPDF(),
                   ),
                 ],
               ),
             ),
 
-            // Download banner: Descargando Tomo 41 // Cap. 143
+            // Download banner
             if (_showDownloadBanner)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -163,12 +258,16 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Descargando Tomo 41 // Cap. 143',
+                              Text(widget.mangaTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: KuroTheme.mono(
                                       fontSize: 9.5,
                                       color: Colors.white,
                                       fontWeight: FontWeight.w700)),
-                              Text('80% completado • 4.2 MB/s',
+                              Text('Modo de lectura optimizado • $displayChapter',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: KuroTheme.mono(
                                       fontSize: 8.5, color: KuroTheme.cyan)),
                             ],
@@ -182,24 +281,6 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Container(
-                      height: 3,
-                      decoration: BoxDecoration(
-                          color: KuroTheme.cardLighter,
-                          borderRadius: BorderRadius.circular(2)),
-                      child: Row(
-                        children: [
-                          Expanded(
-                              flex: 80,
-                              child: Container(
-                                  decoration: BoxDecoration(
-                                      color: KuroTheme.crimson,
-                                      borderRadius: BorderRadius.circular(2)))),
-                          const Expanded(flex: 20, child: SizedBox()),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -209,22 +290,70 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  if (_pdfPath != null)
+                  if (_isLoading)
+                    const Center(
+                      child: CircularProgressIndicator(
+                          color: KuroTheme.crimson, strokeWidth: 2),
+                    )
+                  else if (_effectiveImages.isNotEmpty)
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: _effectiveImages.length,
+                      onPageChanged: (idx) {
+                        setState(() => _currentPage = idx + 1);
+                      },
+                      itemBuilder: (ctx, idx) {
+                        final imgPath = _effectiveImages[idx];
+                        final isLocal = File(imgPath).existsSync();
+                        return Container(
+                          color: _isSepia ? const Color(0xFFF4ECD8) : Colors.black,
+                          child: InteractiveViewer(
+                            child: isLocal
+                                ? Image.file(
+                                    File(imgPath),
+                                    fit: BoxFit.contain,
+                                  )
+                                : Image.network(
+                                    imgPath,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.broken_image,
+                                          color: KuroTheme.textMuted, size: 48),
+                                    ),
+                                  ),
+                          ),
+                        );
+                      },
+                    )
+                  else if (_pdfPath != null)
                     PDFView(
                       filePath: _pdfPath!,
                       enableSwipe: true,
                       swipeHorizontal: !_isRTL,
                       autoSpacing: true,
                       pageFling: true,
+                      onViewCreated: (PDFViewController controller) {
+                        _pdfViewController = controller;
+                      },
+                      onRender: (pages) {
+                        if (pages != null && pages > 0) {
+                          setState(() => _totalPages = pages);
+                        }
+                      },
                       onPageChanged: (page, total) {
                         setState(() {
                           _currentPage = (page ?? 0) + 1;
-                          _totalPages = total ?? 45;
+                          if (total != null && total > 0) {
+                            _totalPages = total;
+                          }
                         });
+                      },
+                      onError: (error) {
+                        debugPrint('PDF error: $error');
                       },
                     )
                   else
-                    // Fallback high-res preview image for offline/demo
+                    // Fallback visualizer
                     Container(
                       color: _isSepia ? const Color(0xFFF4ECD8) : Colors.black,
                       child: Center(
@@ -239,21 +368,21 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                       ),
                     ),
 
-                  // Mini thumbnail overlay: PANEL 12/45
+                  // Mini thumbnail overlay: PANEL X / Y
                   Positioned(
-                    bottom: 20,
+                    bottom: 16,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                          horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(6),
+                        color: Colors.black.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: KuroTheme.border),
                       ),
                       child: Text(
-                        'PANEL $_currentPage/$_totalPages',
+                        'PÁGINA $_currentPage / $_totalPages',
                         style: KuroTheme.mono(
-                            fontSize: 10,
+                            fontSize: 10.5,
                             color: Colors.white,
                             fontWeight: FontWeight.w800),
                       ),
@@ -272,22 +401,44 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
               ),
               child: Column(
                 children: [
-                  // Chapter Previous / Slider / Chapter Next
+                  // Chapter Previous / Navigation Arrows / Slider / Chapter Next
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(
-                            color: KuroTheme.card,
-                            borderRadius: BorderRadius.circular(6)),
-                        child: Text('Cap. Ant.',
-                            style: KuroTheme.mono(
-                                fontSize: 9, color: KuroTheme.textGrey)),
+                      // Flecha Izquierda (Página Anterior)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: _goToPreviousPage,
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: _currentPage > 1
+                                  ? KuroTheme.crimson.withValues(alpha: 0.25)
+                                  : KuroTheme.cardLighter.withValues(alpha: 0.3),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _currentPage > 1
+                                    ? KuroTheme.crimson
+                                    : KuroTheme.border,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.chevron_left,
+                              color: _currentPage > 1
+                                  ? Colors.white
+                                  : KuroTheme.textMuted,
+                              size: 24,
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.chevron_left,
-                          color: KuroTheme.textGrey, size: 20),
+                      const SizedBox(width: 8),
+
+                      // Barra Slider Interactiva
                       Expanded(
                         child: SliderTheme(
                           data: SliderTheme.of(context).copyWith(
@@ -295,38 +446,64 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                             activeTrackColor: KuroTheme.crimson,
                             inactiveTrackColor: KuroTheme.cardLighter,
                             thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 6),
-                            trackHeight: 3,
+                                enabledThumbRadius: 7),
+                            trackHeight: 4,
                           ),
                           child: Slider(
-                            value: _currentPage.toDouble(),
-                            min: 1,
-                            max: _totalPages.toDouble(),
+                            value: _currentPage.toDouble().clamp(
+                                1.0,
+                                _totalPages > 1
+                                    ? _totalPages.toDouble()
+                                    : 1.0),
+                            min: 1.0,
+                            max: _totalPages > 1
+                                ? _totalPages.toDouble()
+                                : 1.0,
                             onChanged: (val) {
-                              setState(() {
-                                _currentPage = val.toInt();
-                              });
+                              _jumpToPage(val.toInt());
                             },
                           ),
                         ),
                       ),
-                      const Icon(Icons.chevron_right,
-                          color: KuroTheme.textGrey, size: 20),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(
-                            color: KuroTheme.card,
-                            borderRadius: BorderRadius.circular(6)),
-                        child: Text('Cap. Sig.',
-                            style: KuroTheme.mono(
-                                fontSize: 9, color: KuroTheme.textGrey)),
+                      const SizedBox(width: 8),
+
+                      // Flecha Derecha (Página Siguiente)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: _goToNextPage,
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: _currentPage < _totalPages
+                                  ? KuroTheme.crimson.withValues(alpha: 0.25)
+                                  : KuroTheme.cardLighter.withValues(alpha: 0.3),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _currentPage < _totalPages
+                                    ? KuroTheme.crimson
+                                    : KuroTheme.border,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.chevron_right,
+                              color: _currentPage < _totalPages
+                                  ? Colors.white
+                                  : KuroTheme.textMuted,
+                              size: 24,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
 
-                  // Info Line: PÁGINA 12 / 45  •  JUMP TO: INDEX GRID
+                  // Info Line: PÁGINA X / Y  •  CAMBIAR CON FLECHAS O DESLIZADOR
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -339,16 +516,16 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                                   color: KuroTheme.crimson,
                                   shape: BoxShape.circle)),
                           const SizedBox(width: 6),
-                          Text('PÁGINA $_currentPage / $_totalPages',
+                          Text('PÁGINA $_currentPage DE $_totalPages',
                               style: KuroTheme.mono(
                                   fontSize: 9.5,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700)),
                         ],
                       ),
-                      Text('JUMP TO: INDEX GRID',
+                      Text('DESLIZA O TOCA LAS FLECHAS',
                           style: KuroTheme.mono(
-                              fontSize: 9.5,
+                              fontSize: 8,
                               color: KuroTheme.cyan,
                               fontWeight: FontWeight.w700)),
                     ],
@@ -356,7 +533,7 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
 
                   const SizedBox(height: 10),
 
-                  // 4 Quick Actions Row: RTL ⇄ CASCADA | AJUSTAR ANCHO | FILTRO SEPIA | BRILLO 85%
+                  // 4 Quick Actions Row: RTL ⇄ CASCADA | AJUSTAR ANCHO | FILTRO SEPIA | BRILLO
                   Row(
                     children: [
                       _buildBottomBtn(
@@ -366,7 +543,7 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                           setState(() => _isRTL = !_isRTL);
                           Fluttertoast.showToast(
                               msg: _isRTL
-                                  ? 'Modo de lectura: RTL (Derecha a Izquierda)'
+                                  ? 'Modo lectura: RTL (Derecha a Izquierda)'
                                   : 'Modo Cascada activado');
                         },
                       ),
@@ -376,7 +553,7 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                         label: 'AJUSTAR ANCHO',
                         onTap: () {
                           Fluttertoast.showToast(
-                              msg: 'Ajuste de ancho automático aplicado');
+                              msg: 'Ajuste de lectura al ancho de pantalla');
                         },
                       ),
                       const SizedBox(width: 6),

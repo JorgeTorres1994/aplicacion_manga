@@ -191,6 +191,7 @@ class KuroAdminBackendService {
     String? customImageUrl,
     String? customPdfUrl,
     String? numberPages,
+    List<String>? pageImages,
   }) async {
     final fs = _safeFirestore;
     String targetMangaId = mangaId ?? '';
@@ -261,6 +262,7 @@ class KuroAdminBackendService {
       'capituloDisplay': chapterNumber,
       'nombre': chapterName.trim().isNotEmpty ? chapterName.trim() : 'Capítulo $chapterNumber',
       'pdfUrl': customPdfUrl ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      'paginas': pageImages ?? [],
       'numberPages': numberPages ?? '42',
       'visibilidad': instantVisibility ? 'PUBLICADO' : 'BORRADOR',
       'tags': tags,

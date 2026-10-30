@@ -5,6 +5,7 @@ import 'package:aplicacion_manga/Screens/login_page.dart';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
 import 'package:aplicacion_manga/services/admin_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -599,10 +600,31 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
 
                 // Sección 2: Comandos Directos
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(width: 4, height: 12, color: KuroTheme.crimson),
-                    const SizedBox(width: 6),
-                    Text('Comandos Directos', style: KuroTheme.title(fontSize: 16)),
+                    Row(
+                      children: [
+                        Container(width: 4, height: 12, color: KuroTheme.crimson),
+                        const SizedBox(width: 6),
+                        Text('Comandos Directos', style: KuroTheme.title(fontSize: 16)),
+                      ],
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        backgroundColor: KuroTheme.purple.withValues(alpha: 0.15),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          side: const BorderSide(color: KuroTheme.purple),
+                        ),
+                      ),
+                      icon: const Icon(Icons.bolt, color: KuroTheme.purple, size: 14),
+                      label: Text(
+                        'POBLAR DRAGON BALL SUPER',
+                        style: KuroTheme.mono(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w800),
+                      ),
+                      onPressed: () => _sembrarDragonBallSuper(),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -1760,6 +1782,48 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
 
                       const SizedBox(height: 10),
 
+                      // Botón para poblar Dragon Ball Super
+                      GestureDetector(
+                        onTap: () => _sembrarDragonBallSuper(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: KuroTheme.purple.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: KuroTheme.purple.withValues(alpha: 0.6)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.bolt,
+                                  color: KuroTheme.purple, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('POBLAR DRAGON BALL SUPER (TOMOS 1 Y 2)',
+                                        style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white)),
+                                    Text('Crea Tomo 1 y 2 con sus 15 capítulos canónicos',
+                                        style: KuroTheme.mono(
+                                            fontSize: 8.5,
+                                            color: KuroTheme.purple)),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios,
+                                  color: KuroTheme.purple, size: 12),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
                       // Cerrar sesión
                       GestureDetector(
                         onTap: () async {
@@ -2484,19 +2548,46 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                             const SizedBox(height: 6),
                             Text('Aún no hay capítulos registrados en este manga',
                                 style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
-                            const SizedBox(height: 10),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: KuroTheme.crimson),
-                              onPressed: () {
-                                if (ctx.mounted) Navigator.pop(ctx);
-                                setState(() {
-                                  _targetUploadMangaId = docId;
-                                  _targetUploadMangaTitle = title;
-                                  _selectedNav = 1;
-                                });
-                              },
-                              child: Text('+ SUBIR PRIMER CAPÍTULO',
-                                  style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                if (title.toLowerCase().contains('dragon ball super'))
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: KuroTheme.purple,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    ),
+                                    icon: const Icon(Icons.bolt, size: 14, color: Colors.white),
+                                    onPressed: () {
+                                      if (ctx.mounted) Navigator.pop(ctx);
+                                      _sembrarDragonBallSuper(targetMangaId: docId);
+                                    },
+                                    label: Text('GENERAR TOMOS 1 Y 2',
+                                        style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w800)),
+                                  ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: KuroTheme.crimson,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                  icon: const Icon(Icons.add_circle_outline, size: 14, color: Colors.white),
+                                  onPressed: () {
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                    setState(() {
+                                      _targetUploadMangaId = docId;
+                                      _targetUploadMangaTitle = title;
+                                      _selectedNav = 1;
+                                    });
+                                  },
+                                  label: Text('+ SUBIR PRIMER CAPÍTULO',
+                                      style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w800)),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -2520,26 +2611,52 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
 
                         return ListTile(
                           dense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           leading: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: KuroTheme.purple.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: KuroTheme.purple.withValues(alpha: 0.4)),
                             ),
-                            child: Text(capTomo,
-                                style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.purple, fontWeight: FontWeight.w700)),
+                            child: Text(
+                              '#$capNum',
+                              style: KuroTheme.mono(fontSize: 10.5, color: KuroTheme.purple, fontWeight: FontWeight.w800),
+                            ),
                           ),
-                          title: Text(
-                            'Cap. $capNum: $capNombre',
-                            style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          title: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: KuroTheme.cardLighter,
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: Border.all(color: KuroTheme.border),
+                                ),
+                                child: Text(
+                                  capTomo.length > 14 ? '${capTomo.substring(0, 14)}...' : capTomo,
+                                  style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.cyan, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  capNombre,
+                                  style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                          subtitle: Text(
-                            '${cap['numberPages'] ?? '42'} págs • ${cap['visibilidad'] ?? 'PUBLICADO'}',
-                            style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '${cap['numberPages'] ?? '42'} págs • ${cap['visibilidad'] ?? 'PUBLICADO'}',
+                              style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted),
+                            ),
                           ),
                           trailing: capPdf.isNotEmpty
                               ? IconButton(
@@ -3051,6 +3168,177 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _sembrarDragonBallSuper({String? targetMangaId}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (context, setDlgState) {
+          return AlertDialog(
+            backgroundColor: KuroTheme.backgroundSecondary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: KuroTheme.border),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.bolt, color: KuroTheme.purple, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'POBLANDO DRAGON BALL SUPER',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                const CircularProgressIndicator(color: KuroTheme.purple),
+                const SizedBox(height: 18),
+                Text(
+                  'Registrando Tomo 1 y Tomo 2 con sus 15 capítulos canónicos en Firestore...',
+                  textAlign: TextAlign.center,
+                  style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    try {
+      String mangaDocId = targetMangaId ?? '';
+
+      // Si no nos pasaron el ID, buscar si existe Dragon Ball Super en el catálogo
+      if (mangaDocId.isEmpty) {
+        final match = _catalogMangas.firstWhere(
+          (m) => m['title'].toString().toLowerCase().contains('dragon ball super'),
+          orElse: () => {},
+        );
+        if (match.isNotEmpty) {
+          mangaDocId = match['docId'] ?? match['id'] ?? '';
+        }
+      }
+
+      // Si no existe, crear el documento del manga en la colección principal
+      if (mangaDocId.isEmpty) {
+        final newDoc = FirebaseFirestore.instance.collection('mangas').doc();
+        mangaDocId = newDoc.id;
+        await newDoc.set({
+          'id': mangaDocId,
+          'title': 'Dragon Ball Super',
+          'author': 'Akira Toriyama & Toyotarō',
+          'mangaCategoryName': 'Shonen',
+          'status': 'EN EMISIÓN',
+          'type': 'MANGA',
+          'numberPages': '852',
+          'imageUrl': 'https://firebasestorage.googleapis.com/v0/b/latin-manga.appspot.com/o/images%2Fdragon_ball_super.jpg?alt=media',
+          'pdfUrl': 'https://firebasestorage.googleapis.com/v0/b/latin-manga.appspot.com/o/pdfs%2F5fac889b-1ed8-496f-b7f1-d0092c68f2ae?alt=media',
+          'tags': ['Shonen', 'Acción', 'Artes Marciales', 'Aventura'],
+          'fecha_creacion': FieldValue.serverTimestamp(),
+          'fecha_actualizacion': FieldValue.serverTimestamp(),
+          'views': '14520',
+        });
+      }
+
+      // Capítulos de Tomo 01: "Los guerreros del Universo 6" (Capítulos 1 al 9)
+      final capitulosTomo1 = [
+        {'num': '1', 'nombre': 'El sueño profético del dios de la destrucción', 'pags': '45'},
+        {'num': '2', 'nombre': 'La derrota de Goku', 'pags': '42'},
+        {'num': '3', 'nombre': 'La ira de Bills', 'pags': '40'},
+        {'num': '4', 'nombre': 'Dios y Dios', 'pags': '44'},
+        {'num': '5', 'nombre': 'Bills y Champa', 'pags': '43'},
+        {'num': '6', 'nombre': 'Preparándose para el torneo', 'pags': '41'},
+        {'num': '7', 'nombre': 'Los guerreros del sexto universo', 'pags': '45'},
+        {'num': '8', 'nombre': '¡El Torneo Comienza!', 'pags': '42'},
+        {'num': '9', 'nombre': 'Goku VS Botamo', 'pags': '40'},
+      ];
+
+      // Capítulos de Tomo 02: "¡Finalmente se define el universo ganador!" (Capítulos 10 al 15)
+      final capitulosTomo2 = [
+        {'num': '10', 'nombre': 'La verdadera identidad de Frost', 'pags': '45'},
+        {'num': '11', 'nombre': '¡Vegeta entra en escena!', 'pags': '43'},
+        {'num': '12', 'nombre': 'El orgullo de los saiyajin', 'pags': '44'},
+        {'num': '13', 'nombre': '¡Finalmente se define el universo ganador!', 'pags': '46'},
+        {'num': '14', 'nombre': 'SOS del futuro', 'pags': '48'},
+        {'num': '15', 'nombre': '¡¡Esperanza una vez más!!', 'pags': '45'},
+      ];
+
+      // Registrar Tomo 1
+      await KuroAdminBackendService.instance.createTomo(
+        mangaId: mangaDocId,
+        tomoNombre: 'Tomo 01: Los guerreros del Universo 6',
+        tomoNumero: 1,
+      );
+
+      for (var cap in capitulosTomo1) {
+        await KuroAdminBackendService.instance.publishChapter(
+          mangaId: mangaDocId,
+          seriesTitle: 'Dragon Ball Super',
+          volume: 'Tomo 01: Los guerreros del Universo 6',
+          chapterNumber: cap['num']!,
+          chapterName: cap['nombre']!,
+          category: 'Shonen',
+          tags: ['Shonen', 'Acción', 'Torneo'],
+          instantVisibility: true,
+          notifyReaders: false,
+          numberPages: cap['pags'],
+          customPdfUrl: 'https://firebasestorage.googleapis.com/v0/b/latin-manga.appspot.com/o/pdfs%2F5fac889b-1ed8-496f-b7f1-d0092c68f2ae?alt=media',
+        );
+      }
+
+      // Registrar Tomo 2
+      await KuroAdminBackendService.instance.createTomo(
+        mangaId: mangaDocId,
+        tomoNombre: 'Tomo 02: ¡Se define el universo ganador!',
+        tomoNumero: 2,
+      );
+
+      for (var cap in capitulosTomo2) {
+        await KuroAdminBackendService.instance.publishChapter(
+          mangaId: mangaDocId,
+          seriesTitle: 'Dragon Ball Super',
+          volume: 'Tomo 02: ¡Se define el universo ganador!',
+          chapterNumber: cap['num']!,
+          chapterName: cap['nombre']!,
+          category: 'Shonen',
+          tags: ['Shonen', 'Acción', 'Trunks del Futuro'],
+          instantVisibility: true,
+          notifyReaders: false,
+          numberPages: cap['pags'],
+          customPdfUrl: 'https://firebasestorage.googleapis.com/v0/b/latin-manga.appspot.com/o/pdfs%2F5fac889b-1ed8-496f-b7f1-d0092c68f2ae?alt=media',
+        );
+      }
+
+      if (mounted) {
+        Navigator.pop(context); // cerrar diálogo de carga
+        Fluttertoast.showToast(
+          msg: '¡Dragon Ball Super poblado con éxito! (2 Tomos, 15 Capítulos)',
+          backgroundColor: KuroTheme.purple,
+          toastLength: Toast.LENGTH_LONG,
+        );
+        _cargarCatalogo();
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        Fluttertoast.showToast(
+          msg: 'Error al poblar: $e',
+          backgroundColor: KuroTheme.crimson,
+          toastLength: Toast.LENGTH_LONG,
+        );
+      }
+    }
   }
 }
 

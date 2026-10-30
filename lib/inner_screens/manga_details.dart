@@ -550,17 +550,36 @@ class _MangaDetailsState extends State<MangaDetails> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.filter_list, size: 14, color: KuroTheme.purple),
-                            const SizedBox(width: 6),
-                            Text('Filtrando por: ', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textMuted)),
-                            Text(_selectedFilterTomo!, style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
-                          ],
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.filter_list, size: 14, color: KuroTheme.purple),
+                              const SizedBox(width: 6),
+                              Text('Filtrando: ', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.textMuted)),
+                              Expanded(
+                                child: Text(
+                                  _selectedFilterTomo!,
+                                  style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () => setState(() => _selectedFilterTomo = null),
-                          child: Text('VER TODOS [X]', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.crimson, fontWeight: FontWeight.w800)),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: KuroTheme.crimson.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: KuroTheme.crimson.withValues(alpha: 0.6)),
+                            ),
+                            child: Text('VER TODOS [X]',
+                                style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w800)),
+                          ),
                         ),
                       ],
                     ),
