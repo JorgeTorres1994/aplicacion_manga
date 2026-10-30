@@ -1469,38 +1469,38 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                     children: [
                       // Avatar con botón de edición
                       Center(
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: 86,
-                              height: 86,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: KuroTheme.crimson, width: 2.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: KuroTheme.crimson.withValues(alpha: 0.35),
-                                    blurRadius: 14,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
+                        child: GestureDetector(
+                          onTap: _showAvatarPickerSheet,
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 86,
+                                height: 86,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: KuroTheme.crimson, width: 2.5),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: KuroTheme.crimson.withValues(alpha: 0.35),
+                                      blurRadius: 14,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(43),
+                                  child: _adminAvatar.isNotEmpty && _adminAvatar.startsWith('http')
+                                      ? Image.network(
+                                          _adminAvatar,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (ctx, err, stack) => _buildDefaultAdminAvatar(),
+                                        )
+                                      : _buildDefaultAdminAvatar(),
+                                ),
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(43),
-                                child: _adminAvatar.isNotEmpty && _adminAvatar.startsWith('http')
-                                    ? Image.network(
-                                        _adminAvatar,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (ctx, err, stack) => _buildDefaultAdminAvatar(),
-                                      )
-                                    : _buildDefaultAdminAvatar(),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: _showAvatarPickerSheet,
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
                                 child: Container(
                                   width: 28,
                                   height: 28,
@@ -1513,8 +1513,8 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                                       color: Colors.black, size: 14),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
