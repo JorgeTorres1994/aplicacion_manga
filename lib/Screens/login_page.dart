@@ -121,6 +121,20 @@ class _LoginPageState extends State<LoginPage> {
             } else if (storedRole == 'reader') {
               isAdmin = false;
             }
+
+            // Limpieza automática de campos repetidos u obsoletos (email/telefono)
+            final data = doc.data()!;
+            final cleanup = <String, dynamic>{};
+            if (data.containsKey('email')) cleanup['email'] = FieldValue.delete();
+            if (data.containsKey('telefono')) {
+              if (data['celular'] == null || data['celular'] == '+51 987654321') {
+                cleanup['celular'] = data['telefono'];
+              }
+              cleanup['telefono'] = FieldValue.delete();
+            }
+            if (cleanup.isNotEmpty) {
+              await doc.reference.update(cleanup);
+            }
           } else {
             await FirebaseFirestore.instance
                 .collection('users')
@@ -129,11 +143,13 @@ class _LoginPageState extends State<LoginPage> {
               'userId': user.uid,
               'usuario': isAdmin ? 'Jorge Torres' : 'Kenji Reader',
               'correo': email,
-              'celular': isAdmin ? '+51 987654321' : '+51 952336505',
+              'celular': isAdmin ? '952336505' : '+51 952336505',
               'clan': 'Carmesí',
               'rango': isAdmin ? 'ROOT ADMIN' : 'LECTOR REGULAR',
               'nivel': isAdmin ? 99 : 12,
               'rol': isAdmin ? 'admin' : 'reader',
+              'avatar': '',
+              'bio': isAdmin ? 'Admin principal' : 'Lector de Manga',
               'fecha_registro': FieldValue.serverTimestamp(),
             });
           }
@@ -206,20 +222,37 @@ class _LoginPageState extends State<LoginPage> {
 
       final currentUser = credential.user ?? FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .set({
-          'userId': currentUser.uid,
-          'usuario': isAdmin ? 'Jorge Torres' : 'Kenji Reader',
-          'correo': email,
-          'celular': isAdmin ? '+51 987654321' : '+51 952336505',
-          'clan': 'Carmesí',
-          'rango': isAdmin ? 'ROOT ADMIN' : 'LECTOR REGULAR',
-          'nivel': isAdmin ? 99 : 12,
-          'rol': isAdmin ? 'admin' : 'reader',
-          'fecha_registro': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        final docRef = FirebaseFirestore.instance.collection('users').doc(currentUser.uid);
+        final doc = await docRef.get();
+        if (!doc.exists) {
+          await docRef.set({
+            'userId': currentUser.uid,
+            'usuario': isAdmin ? 'Jorge Torres' : 'Kenji Reader',
+            'correo': email,
+            'celular': isAdmin ? '952336505' : '+51 952336505',
+            'clan': 'Carmesí',
+            'rango': isAdmin ? 'ROOT ADMIN' : 'LECTOR REGULAR',
+            'nivel': isAdmin ? 99 : 12,
+            'rol': isAdmin ? 'admin' : 'reader',
+            'avatar': '',
+            'bio': isAdmin ? 'Admin principal' : 'Lector de Manga',
+            'fecha_registro': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // Si el documento ya existe, limpiar campos duplicados (email/telefono) sin sobreescribir datos personalizados
+          final data = doc.data() ?? {};
+          final cleanup = <String, dynamic>{};
+          if (data.containsKey('email')) cleanup['email'] = FieldValue.delete();
+          if (data.containsKey('telefono')) {
+            if (data['celular'] == null || data['celular'] == '+51 987654321') {
+              cleanup['celular'] = data['telefono'];
+            }
+            cleanup['telefono'] = FieldValue.delete();
+          }
+          if (cleanup.isNotEmpty) {
+            await docRef.update(cleanup);
+          }
+        }
       }
 
       if (!mounted) return;

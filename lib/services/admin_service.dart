@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 class KuroAdminBackendService {
@@ -31,6 +33,15 @@ class KuroAdminBackendService {
     try {
       if (Firebase.apps.isNotEmpty) {
         return FirebaseAuth.instance;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  FirebaseStorage? get _safeStorage {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        return FirebaseStorage.instance;
       }
     } catch (_) {}
     return null;
@@ -499,7 +510,7 @@ class KuroAdminBackendService {
   }
 
   // ====================================================
-  // 5. PERFIL DE ADMINISTRADOR BACKEND
+  // 5. PERFIL DE ADMINISTRADOR BACKEND (COLECCIÓN 'users')
   // ====================================================
   Future<Map<String, dynamic>?> loadAdminProfile(String uid) async {
     try {
@@ -507,6 +518,21 @@ class KuroAdminBackendService {
       if (fs != null) {
         final doc = await fs.collection('users').doc(uid).get();
         if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+          // Migración y eliminación automática de campos duplicados (email/telefono)
+          if (data.containsKey('email') || data.containsKey('telefono')) {
+            final cleanup = <String, dynamic>{};
+            if (data.containsKey('email')) cleanup['email'] = FieldValue.delete();
+            if (data.containsKey('telefono')) {
+              if (data['celular'] == null || data['celular'] == '+51 987654321') {
+                cleanup['celular'] = data['telefono'];
+              }
+              cleanup['telefono'] = FieldValue.delete();
+            }
+            try {
+              await doc.reference.update(cleanup);
+            } catch (_) {}
+          }
           return doc.data();
         }
       }
@@ -522,14 +548,17 @@ class KuroAdminBackendService {
     required String avatar,
     String? email,
   }) async {
-    final updateData = {
+    final updateData = <String, dynamic>{
       'usuario': name,
-      'telefono': phone,
+      'celular': phone,
       'bio': bio,
       'avatar': avatar,
       'rol': 'admin',
-      'email': email ?? _safeAuth?.currentUser?.email ?? '',
+      'correo': email ?? _safeAuth?.currentUser?.email ?? '',
       'fecha_actualizacion': FieldValue.serverTimestamp(),
+      // Eliminar explícitamente cualquier campo duplicado/obsoleto de la colección
+      'email': FieldValue.delete(),
+      'telefono': FieldValue.delete(),
     };
 
     final fs = _safeFirestore;
@@ -541,8 +570,59 @@ class KuroAdminBackendService {
     }
 
     final user = _safeAuth?.currentUser;
-    if (user != null && name.isNotEmpty) {
-      await user.updateDisplayName(name);
+    if (user != null) {
+      if (name.isNotEmpty) await user.updateDisplayName(name);
+      if (avatar.isNotEmpty) await user.updatePhotoURL(avatar);
+    }
+  }
+
+  Future<String?> uploadAndSaveAdminAvatar({
+    required String uid,
+    required File imageFile,
+  }) async {
+    try {
+      final storage = _safeStorage;
+      if (storage == null) return null;
+      final ref = storage.ref('users/avatars/avatar_${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await ref.putFile(imageFile);
+      final downloadUrl = await ref.getDownloadURL();
+
+      // Guardar INMEDIATAMENTE en el documento del usuario en la colección 'users'
+      final fs = _safeFirestore;
+      if (fs != null) {
+        await fs.collection('users').doc(uid).set({
+          'avatar': downloadUrl,
+          'fecha_actualizacion': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      final user = _safeAuth?.currentUser;
+      if (user != null) {
+        await user.updatePhotoURL(downloadUrl);
+      }
+
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('Error subiendo avatar a Storage y users: $e');
+      return null;
+    }
+  }
+
+  Future<void> saveAdminAvatarUrl({
+    required String uid,
+    required String avatarUrl,
+  }) async {
+    final fs = _safeFirestore;
+    if (fs != null) {
+      await fs.collection('users').doc(uid).set({
+        'avatar': avatarUrl,
+        'fecha_actualizacion': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    final user = _safeAuth?.currentUser;
+    if (user != null) {
+      await user.updatePhotoURL(avatarUrl);
     }
   }
 }

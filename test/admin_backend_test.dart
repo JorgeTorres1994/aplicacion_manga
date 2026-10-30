@@ -63,17 +63,20 @@ void main() {
     test('4. Perfil Admin - Integridad de datos y roles', () async {
       final profilePayload = {
         'usuario': 'Jorge Torres',
-        'telefono': '+51 987 654 321',
+        'celular': '952336505',
         'bio': 'Root Administrator • Kuro Manga Platform // Nivel 9 SuperAdmin',
         'avatar': 'images/admin_crops/mod_user_1.png',
         'rol': 'admin',
-        'email': 'jorge.torres.1994.1000@gmail.com',
+        'correo': 'jorge.torres.1994.1000@gmail.com',
       };
 
       expect(profilePayload['rol'], equals('admin'));
-      expect(profilePayload['email'], equals('jorge.torres.1994.1000@gmail.com'));
+      expect(profilePayload['correo'], equals('jorge.torres.1994.1000@gmail.com'));
+      expect(profilePayload['celular'], equals('952336505'));
       expect(profilePayload['usuario'], equals('Jorge Torres'));
       expect(profilePayload['avatar'], startsWith('images/admin_crops/'));
+      expect(profilePayload.containsKey('email'), isFalse);
+      expect(profilePayload.containsKey('telefono'), isFalse);
     });
 
     test('5. Catálogo - Estados de emisión permitidos', () {

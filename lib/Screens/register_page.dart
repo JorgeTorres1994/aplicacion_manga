@@ -139,6 +139,8 @@ class _RegisterPageState extends State<RegisterPage> {
           'rango': isKuroAdmin ? 'ROOT ADMIN' : 'VETERANO',
           'nivel': isKuroAdmin ? 99 : 42,
           'rol': isKuroAdmin ? 'admin' : 'reader',
+          'avatar': '',
+          'bio': isKuroAdmin ? 'Admin principal' : 'Lector de Manga',
           'fecha_registro': FieldValue.serverTimestamp(),
         });
 

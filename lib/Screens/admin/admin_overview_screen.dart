@@ -104,8 +104,13 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
               if (profile['usuario'] != null && profile['usuario'].toString().isNotEmpty) {
                 _adminNameCtrl.text = profile['usuario'];
               }
-              if (profile['telefono'] != null) {
-                _adminPhoneCtrl.text = profile['telefono'];
+              final phone = profile['celular'] ?? profile['telefono'];
+              if (phone != null && phone.toString().isNotEmpty) {
+                _adminPhoneCtrl.text = phone.toString();
+              }
+              final emailVal = profile['correo'] ?? profile['email'];
+              if (emailVal != null && emailVal.toString().isNotEmpty) {
+                _adminEmailCtrl.text = emailVal.toString();
               }
               if (profile['bio'] != null) {
                 _adminBioCtrl.text = profile['bio'];
@@ -363,14 +368,28 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.asset(
-                      _adminAvatar,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => Container(
-                        color: const Color(0xFFF7728B),
-                        child: const Icon(Icons.person, color: Colors.black, size: 20),
-                      ),
-                    ),
+                    child: _adminAvatar.isNotEmpty && _adminAvatar.startsWith('http')
+                        ? Image.network(
+                            _adminAvatar,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Container(
+                              color: const Color(0xFFF7728B),
+                              child: const Icon(Icons.person, color: Colors.black, size: 20),
+                            ),
+                          )
+                        : (_adminAvatar.isNotEmpty
+                            ? Image.asset(
+                                _adminAvatar,
+                                fit: BoxFit.cover,
+                                errorBuilder: (c, e, s) => Container(
+                                  color: const Color(0xFFF7728B),
+                                  child: const Icon(Icons.person, color: Colors.black, size: 20),
+                                ),
+                              )
+                            : Container(
+                                color: const Color(0xFFF7728B),
+                                child: const Icon(Icons.person, color: Colors.black, size: 20),
+                              )),
                   ),
                 ),
               ),
@@ -602,10 +621,14 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                 const SizedBox(height: 24),
 
                 // Sección 2: Comandos Directos
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(width: 4, height: 12, color: KuroTheme.crimson),
                         const SizedBox(width: 6),
@@ -1911,9 +1934,10 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
     );
   }
 
-  // Selector modal de foto/avatar sincronizado con Firestore
+  // Selector modal de foto/avatar sincronizado directamente con la colección 'users' de Firestore
   void _showAvatarPickerSheet() {
     final urlCtrl = TextEditingController(text: _adminAvatar);
+    final user = FirebaseAuth.instance.currentUser;
 
     showModalBottomSheet(
       context: context,
@@ -1923,90 +1947,253 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         side: BorderSide(color: KuroTheme.border),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            left: 20,
-            right: 20,
-            top: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('FOTO DE PERFIL DEL ADMINISTRADOR',
-                style: KuroTheme.mono(
-                    fontSize: 11,
-                    color: KuroTheme.cyan,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text('Ingresa la URL pública de tu imagen (Web o Firebase Storage)',
-                style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: urlCtrl,
-              style: KuroTheme.mono(fontSize: 11, color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'URL de la Imagen (HTTPS)',
-                hintText: 'https://ejemplo.com/avatar.jpg',
-                labelStyle: KuroTheme.mono(fontSize: 10, color: KuroTheme.textMuted),
-                hintStyle: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.textMuted),
-                filled: true,
-                fillColor: KuroTheme.card,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: KuroTheme.cyan,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: () {
-                      setState(() => _adminAvatar = urlCtrl.text.trim());
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      Fluttertoast.showToast(
-                          msg: 'Foto de perfil actualizada',
-                          backgroundColor: KuroTheme.cyan);
-                    },
-                    child: Text('GUARDAR URL',
-                        style: KuroTheme.mono(
-                            fontSize: 9.5,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w800)),
+      builder: (ctx) {
+        bool isUploading = false;
+        String previewAvatar = _adminAvatar;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                left: 20,
+                right: 20,
+                top: 20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(width: 4, height: 14, color: KuroTheme.cyan),
+                          const SizedBox(width: 8),
+                          Text('FOTO DE PERFIL // COLECCIÓN USERS',
+                              style: KuroTheme.mono(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: KuroTheme.textMuted, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                if (_adminAvatar.isNotEmpty)
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: KuroTheme.crimson),
+                  const SizedBox(height: 4),
+                  Text('La foto se sube a Firebase Storage y se guarda directamente en tu documento de usuario en Firestore.',
+                      style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
+                  const SizedBox(height: 16),
+
+                  // Vista previa del avatar
+                  Center(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 84,
+                          height: 84,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: KuroTheme.cyan, width: 2.5),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(42),
+                            child: previewAvatar.isNotEmpty && previewAvatar.startsWith('http')
+                                ? Image.network(
+                                    previewAvatar,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _buildDefaultAdminAvatar(),
+                                  )
+                                : _buildDefaultAdminAvatar(),
+                          ),
+                        ),
+                        if (isUploading)
+                          Container(
+                            width: 84,
+                            height: 84,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black.withValues(alpha: 0.65),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                  color: KuroTheme.cyan, strokeWidth: 2.5),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Botón 1: Subir desde Galería
+                  SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: KuroTheme.purple,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
-                      onPressed: () {
-                        setState(() => _adminAvatar = '');
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        Fluttertoast.showToast(
-                            msg: 'Foto de perfil removida',
-                            backgroundColor: KuroTheme.crimson);
-                      },
-                      child: Text('REMOVER FOTO',
-                          style: KuroTheme.mono(
-                              fontSize: 9.5,
-                              color: KuroTheme.crimson,
-                              fontWeight: FontWeight.w700)),
+                      icon: const Icon(Icons.photo_library, size: 16, color: Colors.white),
+                      label: Text(
+                        isUploading ? 'SUBIENDO A STORAGE Y FIRESTORE...' : 'SUBIR FOTO DESDE GALERÍA',
+                        style: KuroTheme.mono(
+                            fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w800),
+                      ),
+                      onPressed: isUploading
+                          ? null
+                          : () async {
+                              try {
+                                final picker = ImagePicker();
+                                final picked = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  imageQuality: 85,
+                                );
+                                if (picked == null) return;
+
+                                setModalState(() => isUploading = true);
+                                final file = File(picked.path);
+
+                                final uid = user?.uid ?? 'admin_default';
+                                final newUrl = await KuroAdminBackendService.instance
+                                    .uploadAndSaveAdminAvatar(
+                                  uid: uid,
+                                  imageFile: file,
+                                );
+
+                                if (newUrl != null && newUrl.isNotEmpty) {
+                                  setState(() => _adminAvatar = newUrl);
+                                  setModalState(() {
+                                    previewAvatar = newUrl;
+                                    isUploading = false;
+                                  });
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  Fluttertoast.showToast(
+                                    msg: '¡Foto de perfil guardada en la colección users!',
+                                    backgroundColor: KuroTheme.cyan,
+                                  );
+                                } else {
+                                  setModalState(() => isUploading = false);
+                                  Fluttertoast.showToast(
+                                    msg: 'Error al subir imagen a Firebase',
+                                    backgroundColor: KuroTheme.crimson,
+                                  );
+                                }
+                              } catch (e) {
+                                setModalState(() => isUploading = false);
+                                Fluttertoast.showToast(
+                                  msg: 'Error al seleccionar foto: $e',
+                                  backgroundColor: KuroTheme.crimson,
+                                );
+                              }
+                            },
                     ),
                   ),
-              ],
+
+                  const SizedBox(height: 14),
+
+                  // Separador
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: KuroTheme.border)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text('O INGRESA URL DIRECTA',
+                            style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),
+                      ),
+                      const Expanded(child: Divider(color: KuroTheme.border)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextField(
+                    controller: urlCtrl,
+                    style: KuroTheme.mono(fontSize: 11, color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'URL de la Imagen (HTTPS)',
+                      hintText: 'https://ejemplo.com/avatar.jpg',
+                      labelStyle: KuroTheme.mono(fontSize: 10, color: KuroTheme.textMuted),
+                      hintStyle: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.textMuted),
+                      filled: true,
+                      fillColor: KuroTheme.card,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: KuroTheme.cyan,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () async {
+                            final rawUrl = urlCtrl.text.trim();
+                            if (user != null) {
+                              await KuroAdminBackendService.instance.saveAdminAvatarUrl(
+                                uid: user.uid,
+                                avatarUrl: rawUrl,
+                              );
+                            }
+                            setState(() => _adminAvatar = rawUrl);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            Fluttertoast.showToast(
+                                msg: 'Foto de perfil guardada en users',
+                                backgroundColor: KuroTheme.cyan);
+                          },
+                          child: Text('GUARDAR URL EN USERS',
+                              style: KuroTheme.mono(
+                                  fontSize: 9.5,
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                      if (_adminAvatar.isNotEmpty) ...[
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: KuroTheme.crimson),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () async {
+                              if (user != null) {
+                                await KuroAdminBackendService.instance.saveAdminAvatarUrl(
+                                  uid: user.uid,
+                                  avatarUrl: '',
+                                );
+                              }
+                              setState(() => _adminAvatar = '');
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              Fluttertoast.showToast(
+                                  msg: 'Foto de perfil removida de users',
+                                  backgroundColor: KuroTheme.crimson);
+                            },
+                            child: Text('REMOVER FOTO',
+                                style: KuroTheme.mono(
+                                    fontSize: 9.5,
+                                    color: KuroTheme.crimson,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
