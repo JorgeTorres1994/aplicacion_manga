@@ -19,6 +19,12 @@ class MangasProvider with ChangeNotifier {
 
       for (var element in mangaSnapshot.docs) {
         final data = element.data();
+        final rawTags = data['tags'];
+        List<String> tagsList = [];
+        if (rawTags is List) {
+          tagsList = rawTags.map((e) => e.toString()).toList();
+        }
+
         newMangasList.add(MangasModels(
           id: (data['id'] != null && data['id'].toString().isNotEmpty)
               ? data['id'].toString()
@@ -35,6 +41,19 @@ class MangasProvider with ChangeNotifier {
               'MANGA',
           numberPages: data['numberPages']?.toString() ?? '0',
           pdfUrl: data['pdfUrl']?.toString() ?? '',
+          description: data['description']?.toString() ??
+              data['sinopsis']?.toString() ??
+              data['resumen']?.toString() ??
+              '',
+          autor: data['autor']?.toString() ??
+              data['author']?.toString() ??
+              'Autor no especificado',
+          estado: data['estado']?.toString() ??
+              data['visibilidad']?.toString() ??
+              'EN EMISIÓN',
+          tags: tagsList,
+          rating: (data['rating'] as num?)?.toDouble() ?? 5.0,
+          numRatings: (data['numRatings'] as num?)?.toInt() ?? 0,
         ));
       }
 

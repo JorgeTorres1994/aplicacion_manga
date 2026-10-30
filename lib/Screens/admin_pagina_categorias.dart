@@ -354,12 +354,25 @@ class _AdminPaginaCategoriasState extends State<AdminPaginaCategorias> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    manga.imageUrl.isNotEmpty ? manga.imageUrl : 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
-                                    width: 70,
-                                    height: 90,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: manga.imageUrl.isNotEmpty
+                                      ? Image.network(
+                                          manga.imageUrl,
+                                          width: 70,
+                                          height: 90,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            width: 70,
+                                            height: 90,
+                                            color: KuroTheme.cardLighter,
+                                            child: const Icon(Icons.menu_book, color: KuroTheme.textMuted),
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 70,
+                                          height: 90,
+                                          color: KuroTheme.cardLighter,
+                                          child: const Icon(Icons.menu_book, color: KuroTheme.textMuted),
+                                        ),
                                 ),
                                 Positioned(
                                   top: 4,
@@ -370,7 +383,10 @@ class _AdminPaginaCategoriasState extends State<AdminPaginaCategorias> {
                                       color: KuroTheme.crimson,
                                       borderRadius: BorderRadius.circular(3),
                                     ),
-                                    child: Text('HOT', style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w800)),
+                                    child: Text(
+                                      manga.type.isNotEmpty ? manga.type.toUpperCase() : 'HOT',
+                                      style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w800),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -391,11 +407,13 @@ class _AdminPaginaCategoriasState extends State<AdminPaginaCategorias> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      const Icon(Icons.bookmark_border, color: KuroTheme.textMuted, size: 18),
                                     ],
                                   ),
                                   const SizedBox(height: 2),
-                                  Text('Tatsuki Fujimoto / SHUEISHA', style: KuroTheme.body(fontSize: 10.5, color: KuroTheme.textMuted)),
+                                  Text(
+                                    manga.autor.isNotEmpty ? manga.autor : manga.mangaCategoryName,
+                                    style: KuroTheme.body(fontSize: 10.5, color: KuroTheme.textMuted),
+                                  ),
                                   const SizedBox(height: 6),
                                   Row(
                                     children: [
@@ -403,12 +421,15 @@ class _AdminPaginaCategoriasState extends State<AdminPaginaCategorias> {
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(4)),
                                         child: Text(
-                                          manga.type.isNotEmpty ? manga.type : 'ACCIÓN // GORE',
+                                          manga.mangaCategoryName.toUpperCase(),
                                           style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textGrey, fontWeight: FontWeight.w700),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text('Emisión • Cap. 164', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                                      Text(
+                                        '${manga.estado.toUpperCase()} • ${manga.numberPages.isNotEmpty && manga.numberPages != '0' ? "${manga.numberPages} págs" : "Digital"}',
+                                        style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 6),
@@ -416,9 +437,15 @@ class _AdminPaginaCategoriasState extends State<AdminPaginaCategorias> {
                                     children: [
                                       const Icon(Icons.star, color: KuroTheme.gold, size: 11),
                                       const SizedBox(width: 4),
-                                      Text('4.95 (38.2k)', style: KuroTheme.mono(fontSize: 8.5, color: Colors.white)),
+                                      Text(
+                                        manga.rating > 0 ? manga.rating.toStringAsFixed(1) : '5.0',
+                                        style: KuroTheme.mono(fontSize: 8.5, color: Colors.white),
+                                      ),
                                       const SizedBox(width: 8),
-                                      Text('• Vol. 17 RAW', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan)),
+                                      Text(
+                                        '• ${manga.numRatings > 0 ? "${manga.numRatings} votos" : "Nuevo"}',
+                                        style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan),
+                                      ),
                                     ],
                                   ),
                                 ],

@@ -2,12 +2,14 @@ import 'package:aplicacion_manga/Screens/admin_pagina_config_usuario.dart';
 import 'package:aplicacion_manga/Screens/login_page.dart';
 import 'package:aplicacion_manga/Screens/wishlist/admin_wishlist_screen.dart';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
+import 'package:aplicacion_manga/providers/wishlist_providers.dart';
 import 'package:aplicacion_manga/services/reader_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class AdminPaginaUsuarios extends StatefulWidget {
   const AdminPaginaUsuarios({Key? key}) : super(key: key);
@@ -244,87 +246,103 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
 
               const SizedBox(height: 16),
 
-              // 3-Stats Row: 348 Capítulos | 42 Biblioteca | 1,240h Inmersión
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    _buildStatBox('348', 'CAPÍTULOS', Colors.white),
-                    const SizedBox(width: 8),
-                    _buildStatBox('42', 'BIBLIOTECA', KuroTheme.cyan),
-                    const SizedBox(width: 8),
-                    _buildStatBox('1,240h', 'INMERSIÓN', KuroTheme.purple),
-                  ],
-                ),
-              ),
+              // 3-Stats Row & Tabs (Conectados en vivo al backend de Firestore)
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: KuroReaderBackendService.instance.streamReadingHistory(
+                    FirebaseAuth.instance.currentUser?.uid ?? ''),
+                builder: (context, histSnap) {
+                  final readingList = histSnap.data ?? [];
+                  final wishlistProvider = Provider.of<WishListProvider>(context);
+                  final wishlistCount = wishlistProvider.getWishListItems.length;
+                  final historyCount = readingList.length;
 
-              const SizedBox(height: 16),
-
-              // Tabs: Historial (4) vs Mi Biblioteca (42)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedTab = 0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _selectedTab == 0 ? KuroTheme.crimson : KuroTheme.card,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: _selectedTab == 0 ? KuroTheme.crimson : KuroTheme.border),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.history, color: Colors.white, size: 16),
-                              const SizedBox(width: 6),
-                              Text('Historial', style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(10)),
-                                child: Text('4', style: KuroTheme.mono(fontSize: 9, color: Colors.white)),
-                              ),
-                            ],
-                          ),
+                  return Column(
+                    children: [
+                      // 3-Stats Row
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            _buildStatBox('$historyCount', 'LEÍDOS', Colors.white),
+                            const SizedBox(width: 8),
+                            _buildStatBox('$wishlistCount', 'BIBLIOTECA', KuroTheme.cyan),
+                            const SizedBox(width: 8),
+                            _buildStatBox('LV.$_nivel', 'NIVEL', KuroTheme.purple),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() => _selectedTab = 1);
-                          Navigator.push(context, MaterialPageRoute(builder: (c) => const AdminWishListScreem()));
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _selectedTab == 1 ? KuroTheme.crimson : KuroTheme.card,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: _selectedTab == 1 ? KuroTheme.crimson : KuroTheme.border),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.bookmark_outline, color: KuroTheme.textGrey, size: 16),
-                              const SizedBox(width: 6),
-                              Text('Mi Biblioteca', style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: KuroTheme.textGrey)),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(10)),
-                                child: Text('42', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey)),
+
+                      const SizedBox(height: 16),
+
+                      // Tabs: Historial vs Mi Biblioteca
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _selectedTab = 0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: _selectedTab == 0 ? KuroTheme.crimson : KuroTheme.card,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: _selectedTab == 0 ? KuroTheme.crimson : KuroTheme.border),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.history, color: Colors.white, size: 16),
+                                      const SizedBox(width: 6),
+                                      Text('Historial', style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(10)),
+                                        child: Text('$historyCount', style: KuroTheme.mono(fontSize: 9, color: Colors.white)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() => _selectedTab = 1);
+                                  Navigator.push(context, MaterialPageRoute(builder: (c) => const AdminWishListScreem()));
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: _selectedTab == 1 ? KuroTheme.crimson : KuroTheme.card,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: _selectedTab == 1 ? KuroTheme.crimson : KuroTheme.border),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.bookmark_outline, color: KuroTheme.textGrey, size: 16),
+                                      const SizedBox(width: 6),
+                                      Text('Mi Biblioteca', style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: KuroTheme.textGrey)),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                        decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(10)),
+                                        child: Text('$wishlistCount', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+                },
               ),
 
               const SizedBox(height: 20),
@@ -423,9 +441,7 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
                           progress: progress,
                           progressText: '$progressInt% completado',
                           extraText: progress >= 1.0 ? 'Releer' : 'Continuar',
-                          imgUrl: imgUrl.isNotEmpty
-                              ? imgUrl
-                              : 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
+                          imgUrl: imgUrl,
                         ),
                       );
                     }).toList(),
@@ -567,7 +583,25 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(imgUrl, width: 48, height: 62, fit: BoxFit.cover),
+                child: imgUrl.isNotEmpty
+                    ? Image.network(
+                        imgUrl,
+                        width: 48,
+                        height: 62,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 48,
+                          height: 62,
+                          color: KuroTheme.cardLighter,
+                          child: const Icon(Icons.menu_book, color: KuroTheme.textMuted, size: 20),
+                        ),
+                      )
+                    : Container(
+                        width: 48,
+                        height: 62,
+                        color: KuroTheme.cardLighter,
+                        child: const Icon(Icons.menu_book, color: KuroTheme.textMuted, size: 20),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(

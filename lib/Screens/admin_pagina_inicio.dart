@@ -3,6 +3,7 @@ import 'package:aplicacion_manga/inner_screens/manga_details.dart';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
 import 'package:aplicacion_manga/models/mangas_models.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
+import 'package:aplicacion_manga/providers/wishlist_providers.dart';
 import 'package:aplicacion_manga/services/reader_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -56,6 +57,10 @@ class _AdminPaginaInicioState extends State<AdminPaginaInicio> {
   Widget build(BuildContext context) {
     final mangasProvider = Provider.of<MangasProvider>(context);
     final allMangas = mangasProvider.getMangas;
+    final wishlistProvider = Provider.of<WishListProvider>(context);
+    final featuredManga = allMangas.isNotEmpty ? allMangas.first : null;
+    final isFeaturedInWishlist = featuredManga != null &&
+        wishlistProvider.getWishListItems.containsKey(featuredManga.id);
 
     return Scaffold(
       backgroundColor: KuroTheme.background,
@@ -279,196 +284,215 @@ class _AdminPaginaInicioState extends State<AdminPaginaInicio> {
 
               const SizedBox(height: 16),
 
-              // 4. Hero Featured Card (VOID // SHINSEI)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: KuroTheme.border),
-                    image: const DecorationImage(
-                      image: NetworkImage(
-                        'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
-                      ),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+              // 4. Hero Featured Card (Enlazado al catálogo dinámico)
+              if (featuredManga != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Container(
-                    padding: const EdgeInsets.all(18),
+                    width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
-                      gradient: KuroTheme.heroOverlayGradient,
+                      border: Border.all(color: KuroTheme.border),
+                      image: DecorationImage(
+                        image: NetworkImage(
+                          featuredManga.imageUrl.isNotEmpty
+                              ? featuredManga.imageUrl
+                              : 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
+                        ),
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Badges top
-                        Row(
-                          children: [
-                            KuroTheme.badge(text: 'DESTACADO', bgColor: KuroTheme.crimson),
-                            const SizedBox(width: 6),
-                            KuroTheme.badge(
-                              text: 'EXCLUSIVO KURO',
-                              bgColor: KuroTheme.cardLighter,
-                              textColor: KuroTheme.cyan,
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.star, color: KuroTheme.gold, size: 12),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '4.98 (14.2K)',
-                                    style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 120),
-
-                        Text(
-                          'CAPÍTULO 48 DISPONIBLE • VOL. 04',
-                          style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey, fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'VOID // SHINSEI',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        Text(
-                          '虚無の新生 • CHRONICLES',
-                          style: KuroTheme.mono(fontSize: 10, color: KuroTheme.crimson),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'La barrera del Sector 07 ha caído. Rin empuña la espada del eclipse para sellar el umbral...',
-                          style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // Action Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  if (allMangas.isNotEmpty) {
-                                    Navigator.pushNamed(
-                                      context,
-                                      MangaDetails.routeName,
-                                      arguments: allMangas.first.id,
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    gradient: KuroTheme.crimsonGradient,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: KuroTheme.crimson.withValues(alpha: 0.35),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.play_arrow, color: Colors.white, size: 18),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'LEER AHORA',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: KuroTheme.card.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: KuroTheme.border),
-                              ),
-                              child: const Icon(Icons.bookmark_outline, color: Colors.white, size: 20),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: KuroTheme.card.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: KuroTheme.border),
-                              ),
-                              child: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 12),
-                        // Pagination dots
-                        Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        gradient: KuroTheme.heroOverlayGradient,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Badges top
+                          Row(
                             children: [
+                              KuroTheme.badge(text: 'DESTACADO', bgColor: KuroTheme.crimson),
+                              const SizedBox(width: 6),
+                              KuroTheme.badge(
+                                text: featuredManga.type.isNotEmpty ? featuredManga.type.toUpperCase() : 'MANGA',
+                                bgColor: KuroTheme.cardLighter,
+                                textColor: KuroTheme.cyan,
+                              ),
+                              const Spacer(),
                               Container(
-                                width: 18,
-                                height: 4,
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: KuroTheme.crimson,
-                                  borderRadius: BorderRadius.circular(2),
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                width: 4,
-                                height: 4,
-                                decoration: const BoxDecoration(color: KuroTheme.border, shape: BoxShape.circle),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                width: 4,
-                                height: 4,
-                                decoration: const BoxDecoration(color: KuroTheme.border, shape: BoxShape.circle),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.star, color: KuroTheme.gold, size: 12),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${featuredManga.rating > 0 ? featuredManga.rating.toStringAsFixed(1) : "5.0"} (${featuredManga.numRatings > 0 ? featuredManga.numRatings : 1} votos)',
+                                      style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 120),
+
+                          Text(
+                            featuredManga.numberPages.isNotEmpty && featuredManga.numberPages != '0'
+                                ? '${featuredManga.numberPages} PÁGINAS • ${featuredManga.estado.toUpperCase()}'
+                                : featuredManga.estado.toUpperCase(),
+                            style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            featuredManga.title.toUpperCase(),
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${featuredManga.mangaCategoryName.toUpperCase()} • OFICIAL',
+                            style: KuroTheme.mono(fontSize: 10, color: KuroTheme.crimson),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            featuredManga.description.isNotEmpty
+                                ? featuredManga.description
+                                : 'Obra disponible en la plataforma Kuro. Explora sus capítulos y tomos registrados.',
+                            style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Action Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      MangaDetails.routeName,
+                                      arguments: featuredManga.id,
+                                    );
+                                  },
+                                  child: Container(
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      gradient: KuroTheme.crimsonGradient,
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: KuroTheme.crimson.withValues(alpha: 0.35),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'LEER AHORA',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                            letterSpacing: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  wishlistProvider.addRemoveMangasToWishList(mangaId: featuredManga.id);
+                                },
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: KuroTheme.card.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: KuroTheme.border),
+                                  ),
+                                  child: Icon(
+                                    isFeaturedInWishlist ? Icons.bookmark : Icons.bookmark_outline,
+                                    color: isFeaturedInWishlist ? KuroTheme.crimson : Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    MangaDetails.routeName,
+                                    arguments: featuredManga.id,
+                                  );
+                                },
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: KuroTheme.card.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: KuroTheme.border),
+                                  ),
+                                  child: const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 12),
+                          // Status indicator
+                          Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 18,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: KuroTheme.crimson,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Container(
+                                  width: 4,
+                                  height: 4,
+                                  decoration: const BoxDecoration(color: KuroTheme.border, shape: BoxShape.circle),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
 
               const SizedBox(height: 20),
 
@@ -555,134 +579,144 @@ class _AdminPaginaInicioState extends State<AdminPaginaInicio> {
 
               const SizedBox(height: 12),
 
-              // Horizontal Manga Cards
+              // Horizontal Manga Cards (En Tendencia)
               SizedBox(
                 height: 250,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: allMangas.isNotEmpty ? allMangas.length : 3,
-                  itemBuilder: (context, index) {
-                    final manga = allMangas.isNotEmpty
-                        ? allMangas[index % allMangas.length]
-                        : MangasModels(
-                            id: 'sample_$index',
-                            title: index == 0 ? 'Vagabond: Kensei' : (index == 1 ? 'Chainsaw Legacy' : 'Solo Hunter'),
-                            imageUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
-                            type: 'SEINEN • HISTÓRICO',
-                            mangaCategoryName: '184 Caps',
-                          );
-
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          MangaDetails.routeName,
-                          arguments: manga.id,
-                        );
-                      },
-                      child: Container(
-                        width: 140,
-                        margin: const EdgeInsets.only(right: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    manga.imageUrl.isNotEmpty
-                                        ? manga.imageUrl
-                                        : 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
-                                    height: 175,
-                                    width: 140,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (ctx, err, stack) => Container(
-                                      height: 175,
-                                      width: 140,
-                                      color: KuroTheme.cardLighter,
-                                      child: const Icon(Icons.broken_image, color: KuroTheme.textMuted),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 6,
-                                  left: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: KuroTheme.crimson,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      '#0${index + 1}',
-                                      style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w800),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 6,
-                                  right: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.7),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.star, color: KuroTheme.gold, size: 10),
-                                        const SizedBox(width: 2),
-                                        Text('4.9', style: KuroTheme.mono(fontSize: 8.5, color: Colors.white)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 6,
-                                  left: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.7),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      manga.numberPages.isNotEmpty ? '${manga.numberPages} Pags' : '184 Caps',
-                                      style: KuroTheme.mono(fontSize: 8.5, color: Colors.white),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              manga.type.isNotEmpty ? manga.type.toUpperCase() : 'SEINEN',
-                              style: KuroTheme.mono(fontSize: 8, color: KuroTheme.cyan, fontWeight: FontWeight.w700),
-                              maxLines: 1,
-                            ),
-                            Text(
-                              manga.title,
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              manga.mangaCategoryName.isNotEmpty ? manga.mangaCategoryName : 'Takehiko I.',
-                              style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted),
-                              maxLines: 1,
-                            ),
-                          ],
+                child: allMangas.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Cargando catálogo...',
+                          style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textMuted),
                         ),
+                      )
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: allMangas.length,
+                        itemBuilder: (context, index) {
+                          final manga = allMangas[index];
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                MangaDetails.routeName,
+                                arguments: manga.id,
+                              );
+                            },
+                            child: Container(
+                              width: 140,
+                              margin: const EdgeInsets.only(right: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: manga.imageUrl.isNotEmpty
+                                            ? Image.network(
+                                                manga.imageUrl,
+                                                height: 175,
+                                                width: 140,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (ctx, err, stack) => Container(
+                                                  height: 175,
+                                                  width: 140,
+                                                  color: KuroTheme.cardLighter,
+                                                  child: const Icon(Icons.menu_book, color: KuroTheme.textMuted),
+                                                ),
+                                              )
+                                            : Container(
+                                                height: 175,
+                                                width: 140,
+                                                color: KuroTheme.cardLighter,
+                                                child: const Icon(Icons.menu_book, color: KuroTheme.textMuted),
+                                              ),
+                                      ),
+                                      Positioned(
+                                        top: 6,
+                                        left: 6,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: KuroTheme.crimson,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            '#0${index + 1}',
+                                            style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w800),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 6,
+                                        right: 6,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.7),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.star, color: KuroTheme.gold, size: 10),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                manga.rating > 0 ? manga.rating.toStringAsFixed(1) : '5.0',
+                                                style: KuroTheme.mono(fontSize: 8.5, color: Colors.white),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 6,
+                                        left: 6,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.7),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            manga.numberPages.isNotEmpty && manga.numberPages != '0'
+                                                ? '${manga.numberPages} págs'
+                                                : manga.estado.toUpperCase(),
+                                            style: KuroTheme.mono(fontSize: 8.5, color: Colors.white),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    manga.type.isNotEmpty ? manga.type.toUpperCase() : 'MANGA',
+                                    style: KuroTheme.mono(fontSize: 8, color: KuroTheme.cyan, fontWeight: FontWeight.w700),
+                                    maxLines: 1,
+                                  ),
+                                  Text(
+                                    manga.title,
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    manga.autor.isNotEmpty ? manga.autor : manga.mangaCategoryName,
+                                    style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
 
               // 7. Section "CONTINUAR LEYENDO" (Sincronizado con Firestore)
@@ -893,90 +927,109 @@ class _AdminPaginaInicioState extends State<AdminPaginaInicio> {
               ),
               const SizedBox(height: 12),
 
-              _buildChapterRow(
-                badgeText: 'NUEVO',
-                badgeColor: KuroTheme.crimson,
-                timeText: 'HACE 24M',
-                title: 'Tokyo Ghoul: Rebirth',
-                chapter: 'Cap. 85: La Puerta de Niebla',
-                tag: 'Scan: Kuro Team • HD RAW',
-                imageUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
-              ),
-              _buildChapterRow(
-                badgeText: 'HOY',
-                badgeColor: KuroTheme.cardLighter,
-                timeText: 'HACE 2H',
-                title: 'The Shadow Monarch',
-                chapter: 'Cap. 199: Juicio Final',
-                tag: 'Scan: Apex Scans • OFICIAL',
-                imageUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
-              ),
-              _buildChapterRow(
-                badgeText: 'HOY',
-                badgeColor: KuroTheme.cardLighter,
-                timeText: 'HACE 5H',
-                title: 'Ghost in Cyber-Verse',
-                chapter: 'Cap. 34: Desconexión de Red',
-                tag: 'Scan: Kuro Exclusive • RAW 4K',
-                imageUrl: 'https://e.rpp-noticias.io/xlarge/2018/11/22/484448_715070.jpg',
-              ),
+              if (allMangas.isNotEmpty)
+                ...allMangas.take(4).map((manga) {
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        MangaDetails.routeName,
+                        arguments: manga.id,
+                      );
+                    },
+                    child: _buildChapterRow(
+                      badgeText: manga.estado.toUpperCase().contains('EMISI') ? 'NUEVO' : 'COMPLETO',
+                      badgeColor: manga.estado.toUpperCase().contains('EMISI') ? KuroTheme.crimson : KuroTheme.cardLighter,
+                      timeText: manga.type.isNotEmpty ? manga.type.toUpperCase() : 'MANGA',
+                      title: manga.title,
+                      chapter: manga.numberPages.isNotEmpty && manga.numberPages != '0'
+                          ? '${manga.numberPages} Páginas • ${manga.mangaCategoryName}'
+                          : '${manga.mangaCategoryName} • Kuro Scan',
+                      tag: manga.autor.isNotEmpty ? 'Autor: ${manga.autor}' : 'Scan Oficial KuroHQ',
+                      imageUrl: manga.imageUrl,
+                    ),
+                  );
+                }).toList()
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Center(
+                    child: Text('No hay obras registradas en el catálogo.', style: KuroTheme.body(fontSize: 11, color: KuroTheme.textMuted)),
+                  ),
+                ),
 
               const SizedBox(height: 20),
 
               // 9. Community Discussion Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: KuroTheme.cardDecoration(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'DISCUSIÓN DE LA COMUNIDAD  1.4K COMENTARIOS HOY',
-                        style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '¿El capítulo 48 de VOID // SHINSEI confirma la teoría sobre la identidad del viajero en el tiempo?',
-                        style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white, height: 1.3),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              if (featuredManga != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        MangaDetails.routeName,
+                        arguments: featuredManga.id,
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: KuroTheme.cardDecoration(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Container(
-                                width: 24,
-                                height: 24,
-                                decoration: const BoxDecoration(color: KuroTheme.purple, shape: BoxShape.circle),
-                                child: Center(
-                                  child: Text('K', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w800)),
-                                ),
+                              Container(width: 4, height: 12, color: KuroTheme.crimson),
+                              const SizedBox(width: 6),
+                              Text(
+                                'DISCUSIÓN DE LA COMUNIDAD // EN VIVO',
+                                style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700),
                               ),
-                              const SizedBox(width: 8),
-                              Text('Kenji_Zero', style: KuroTheme.mono(fontSize: 11, color: KuroTheme.textGrey)),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: KuroTheme.cardLighter,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: KuroTheme.border),
-                            ),
-                            child: Text(
-                              'UNIRSE AL DEBATE',
-                              style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700),
-                            ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '¿Qué opinas sobre el desarrollo de ${featuredManga.title}? Únete a las teorías y reseñas de la comunidad.',
+                            style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white, height: 1.3),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
+                                    child: Center(
+                                      child: Text('K', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w800)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('Lector Verificado', style: KuroTheme.mono(fontSize: 11, color: KuroTheme.textGrey)),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: KuroTheme.cardLighter,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: KuroTheme.border),
+                                ),
+                                child: Text(
+                                  'VER RESEÑAS',
+                                  style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
 
               const SizedBox(height: 30),
             ],

@@ -795,68 +795,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 18),
-
-                // Card ÚLTIMO CAPÍTULO
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: KuroTheme.cardDecoration(
-                    color: KuroTheme.card.withValues(alpha: 0.6),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: KuroTheme.cardLighter,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.menu_book,
-                          color: KuroTheme.crimson,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ÚLTIMO CAPÍTULO',
-                              style: KuroTheme.mono(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: KuroTheme.textMuted,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Cap. 84 - Nocturno en Shin...',
-                              style: KuroTheme.body(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: KuroTheme.textWhite,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        'LEÍDO 92%',
-                        style: KuroTheme.mono(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: KuroTheme.crimson,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 // Footer: ¿No tienes una cuenta? Regístrate
                 Row(

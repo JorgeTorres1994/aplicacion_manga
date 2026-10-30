@@ -208,7 +208,10 @@ class _MangaDetailsState extends State<MangaDetails> {
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(color: KuroTheme.cyan.withValues(alpha: 0.6)),
                       ),
-                      child: Text('TOMO 41', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
+                      child: Text(
+                        currentManga.type.isNotEmpty ? currentManga.type.toUpperCase() : 'MANGA',
+                        style: KuroTheme.mono(fontSize: 9, color: KuroTheme.cyan, fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                   Positioned(
@@ -220,7 +223,10 @@ class _MangaDetailsState extends State<MangaDetails> {
                         color: KuroTheme.crimson,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text('FINALIZADO', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
+                      child: Text(
+                        currentManga.estado.toUpperCase(),
+                        style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800),
+                      ),
                     ),
                   ),
                 ],
@@ -235,11 +241,17 @@ class _MangaDetailsState extends State<MangaDetails> {
               children: [
                 const Icon(Icons.star, color: KuroTheme.gold, size: 14),
                 const SizedBox(width: 4),
-                Text('4.98 (89.4k)', style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
+                Text(
+                  '${currentManga.rating > 0 ? currentManga.rating.toStringAsFixed(1) : "5.0"} (${currentManga.numRatings > 0 ? "${currentManga.numRatings} votos" : "Nuevo"})',
+                  style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(width: 8),
                 Text('•', style: KuroTheme.mono(color: KuroTheme.textMuted)),
                 const SizedBox(width: 8),
-                Text('#01 EN TENDENCIAS', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
+                Text(
+                  currentManga.mangaCategoryName.toUpperCase(),
+                  style: KuroTheme.mono(fontSize: 10, color: KuroTheme.cyan, fontWeight: FontWeight.w700),
+                ),
               ],
             ),
 
@@ -263,7 +275,9 @@ class _MangaDetailsState extends State<MangaDetails> {
             const SizedBox(height: 4),
 
             Text(
-              'Historia & Arte por Kentarou Miura • Hakusensha',
+              currentManga.autor.isNotEmpty
+                  ? 'Historia & Arte: ${currentManga.autor}'
+                  : 'Historia & Arte: Scan Oficial Kuro',
               style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey),
             ),
 
@@ -275,10 +289,14 @@ class _MangaDetailsState extends State<MangaDetails> {
               runSpacing: 6,
               alignment: WrapAlignment.center,
               children: [
-                _buildTag('DARK FANTASY'),
-                _buildTag('SEINEN'),
-                _buildTag('PSICOLÓGICO'),
-                _buildTag(currentManga.numberPages.isNotEmpty ? '${currentManga.numberPages} PÁGINAS' : '370 CAPÍTULOS'),
+                if (currentManga.tags.isNotEmpty)
+                  ...currentManga.tags.map((t) => _buildTag(t.toUpperCase()))
+                else ...[
+                  _buildTag(currentManga.mangaCategoryName.toUpperCase()),
+                  _buildTag(currentManga.type.toUpperCase()),
+                ],
+                if (currentManga.numberPages.isNotEmpty && currentManga.numberPages != '0')
+                  _buildTag('${currentManga.numberPages} PÁGINAS'),
               ],
             ),
 
@@ -326,7 +344,7 @@ class _MangaDetailsState extends State<MangaDetails> {
                             const Icon(Icons.menu_book, color: Colors.white, size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              'LEER CAP. 142',
+                              'LEER AHORA',
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
@@ -431,12 +449,17 @@ class _MangaDetailsState extends State<MangaDetails> {
                             ),
                           ],
                         ),
-                        Text('SERIALIZACIÓN 1989-2023', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                        Text(
+                          currentManga.estado.toUpperCase(),
+                          style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'En un mundo consumido por la niebla del eclipse y las cenizas de un pacto demoníaco ancestral, el guerrero maldito Guts continúa su implacable cacería contra las sombras que desgarran su destino...',
+                      currentManga.description.isNotEmpty
+                          ? currentManga.description
+                          : 'Esta obra está disponible en el catálogo de Kuro. Explora sus tomos y capítulos publicados.',
                       style: KuroTheme.body(fontSize: 11.5, color: KuroTheme.textGrey, height: 1.5),
                       maxLines: _isExpandedSynopsis ? null : 3,
                     ),
@@ -465,14 +488,14 @@ class _MangaDetailsState extends State<MangaDetails> {
                           Row(
                             children: [
                               _buildMetaCell('DIRECCIÓN DE LECTURA', 'Derecha a Izquierda (RTL)'),
-                              _buildMetaCell('SERIALIZACIÓN', 'Young Animal'),
+                              _buildMetaCell('CATEGORÍA', currentManga.mangaCategoryName.isNotEmpty ? currentManga.mangaCategoryName : 'Manga'),
                             ],
                           ),
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              _buildMetaCell('DEMOGRAFÍA', 'Seinen (Adulto)'),
-                              _buildMetaCell('TRADUCCIÓN', 'Scan Oficial KuroHQ', isCyan: true),
+                              _buildMetaCell('TIPO / FORMATO', currentManga.type.isNotEmpty ? currentManga.type : 'Digital HD'),
+                              _buildMetaCell('AUTOR', currentManga.autor.isNotEmpty ? currentManga.autor : 'Scan Oficial', isCyan: true),
                             ],
                           ),
                         ],
@@ -786,10 +809,13 @@ class _MangaDetailsState extends State<MangaDetails> {
                             ),
                           ],
                         ),
-                        Text('★ 4.98 / 5.0', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.gold, fontWeight: FontWeight.w700)),
+                        Text(
+                          '★ ${currentManga.rating > 0 ? currentManga.rating.toStringAsFixed(1) : "5.0"} / 5.0',
+                          style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.gold, fontWeight: FontWeight.w700),
+                        ),
                       ],
                     ),
-                    Text('Voz de los lectores verificados de Kuro', style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
+                    Text('Voz de los lectores en la comunidad Kuro', style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
 
                     const SizedBox(height: 16),
 
@@ -801,26 +827,33 @@ class _MangaDetailsState extends State<MangaDetails> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '4.9',
+                              currentManga.rating > 0 ? currentManga.rating.toStringAsFixed(1) : '5.0',
                               style: GoogleFonts.spaceGrotesk(fontSize: 38, fontWeight: FontWeight.w900, color: Colors.white, height: 1.0),
                             ),
                             Row(
                               children: List.generate(
                                 5,
-                                (index) => const Icon(Icons.star, color: KuroTheme.gold, size: 14),
+                                (index) => Icon(
+                                  index < (currentManga.rating.round()) ? Icons.star : Icons.star_border,
+                                  color: KuroTheme.gold,
+                                  size: 14,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text('89,410 votos', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted)),
+                            Text(
+                              currentManga.numRatings > 0 ? '${currentManga.numRatings} votos' : 'Sin votos aún',
+                              style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted),
+                            ),
                           ],
                         ),
                         const SizedBox(width: 20),
                         Expanded(
                           child: Column(
                             children: [
-                              _buildRatingBarRow('5', 0.94, '94%'),
-                              _buildRatingBarRow('4', 0.04, '4%'),
-                              _buildRatingBarRow('3', 0.01, '1%'),
+                              _buildRatingBarRow('5★', currentManga.numRatings > 0 ? 0.90 : 0.0, 'Excelentes'),
+                              _buildRatingBarRow('3★', currentManga.numRatings > 0 ? 0.08 : 0.0, 'Regulares'),
+                              _buildRatingBarRow('1★', currentManga.numRatings > 0 ? 0.02 : 0.0, 'Bajas'),
                             ],
                           ),
                         ),
@@ -883,30 +916,25 @@ class _MangaDetailsState extends State<MangaDetails> {
                         final liveComments = snapshot.data ?? [];
 
                         if (liveComments.isEmpty) {
-                          return Column(
-                            children: [
-                              _buildReviewCard(
-                                avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
-                                userName: 'Valentin_Dragonslayer',
-                                clan: 'CLAN CARMESÍ',
-                                clanColor: KuroTheme.crimson,
-                                timeAgo: 'Hace 2 horas • Leyendo',
-                                comment: 'La narrativa y el dibujo de esta obra son una verdadera obra de arte. Releer esto en Kuro con resolución nativa es una experiencia casi religiosa.',
-                                likes: '428',
-                                replies: '34 respuestas',
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  const Icon(Icons.chat_bubble_outline, color: KuroTheme.textMuted, size: 32),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Aún no hay comentarios en esta obra.',
+                                    style: GoogleFonts.spaceGrotesk(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '¡Sé el primero en publicar una opinión o reseña!',
+                                    style: KuroTheme.body(fontSize: 10.5, color: KuroTheme.textMuted),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 12),
-                              _buildReviewCard(
-                                avatarUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
-                                userName: 'Noctis_Kuro',
-                                clan: 'CLAN SOMBRA',
-                                clanColor: KuroTheme.cardLighter,
-                                timeAgo: 'Ayer • Al día con la serie',
-                                comment: 'Comunidad activa recomendada al 100%. No duden en descargar los tomos para leerlos sin pausas en el modo inmersivo de Kuro.',
-                                likes: '215',
-                                replies: '12 respuestas',
-                              ),
-                            ],
+                            ),
                           );
                         }
 
