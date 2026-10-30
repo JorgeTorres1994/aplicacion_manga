@@ -1,76 +1,76 @@
+import 'package:aplicacion_manga/services/admin_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class KuroAdminModerationScreen extends StatefulWidget {
-  const KuroAdminModerationScreen({Key? key}) : super(key: key);
+  final bool isEmbedded;
+  final VoidCallback? onBack;
+
+  const KuroAdminModerationScreen({
+    Key? key,
+    this.isEmbedded = false,
+    this.onBack,
+  }) : super(key: key);
 
   @override
-  State<KuroAdminModerationScreen> createState() => _KuroAdminModerationScreenState();
+  State<KuroAdminModerationScreen> createState() =>
+      _KuroAdminModerationScreenState();
 }
 
 class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
-  int _selectedFilter = 0; // 0: TODOS 14, 1: REPORTADOS 9, 2: CRÍTICAS 3
+  int _selectedFilter = 0; // 0: TODOS, 1: REPORTADOS, 2: CRÍTICAS
+  List<Map<String, dynamic>> _reports = [];
+  bool _isLoading = true;
 
-  final List<Map<String, dynamic>> _reports = [
-    {
-      'manga': 'Berserk: Souls',
-      'cap': 'CAPÍTULO 142 • PÁG. 18',
-      'badge': 'SPOILER ×3',
-      'badgeColor': KuroTheme.crimson,
-      'user': 'griffith_stan',
-      'lvl': 'LV.24',
-      'avatar': 'images/admin_crops/mod_user_1.png',
-      'tag': '@falcon_eye • Clan Halcón • Hace 12m',
-      'extraBadge': 'Reincidente 2x',
-      'warning': 'TEXTO SIN MÁSCARA REVELADO',
-      'text': '"No puedo creer que en la última viñeta Guts pierda el amuleto y Casca recupere la memoria completa justo frente a él, arruinaron el arco."',
-      'actions': ['Tag Spoiler', 'SANCIONAR', 'APROBAR'],
-    },
-    {
-      'manga': 'Vagabond: Kensei',
-      'cap': 'CRÍTICA GLOBAL • CAP. 88',
-      'badge': 'AGRESIÓN SCAN',
-      'badgeColor': KuroTheme.crimson,
-      'user': 'ronin_hater',
-      'lvl': 'LV.08',
-      'avatar': 'images/admin_crops/mod_user_2.png',
-      'tag': '@ronin_99 • Sin Clan • Hace 34m',
-      'extraBadge': 'IA Flagged (0.94)',
-      'warning': 'VIOLACIÓN TÉRMINOS COMUNIDAD',
-      'text': '"Los editores de este capítulo son unos incompetentes totales, deberían cerrar el grupo y dejar que gente con cerebro traduzca esto, denles ban ya."',
-      'actions': ['Mute 24h', 'PURGAR', 'DESCARTAR'],
-    },
-    {
-      'manga': 'Chainsaw Legacy',
-      'cap': 'CAPÍTULO 164 • SECCIÓN COM...',
-      'badge': 'BOT SCAN',
-      'badgeColor': KuroTheme.purple,
-      'user': 'free_manga_bot',
-      'lvl': 'NUEVO',
-      'avatar': 'images/admin_crops/mod_user_3.png',
-      'tag': '@scan_leak_hq • IP Sospechosa • Autoban Sugerido',
-      'extraBadge': 'Autoban',
-      'warning': 'ENLACE EXTERNO NO AUTORIZADO',
-      'text': '"Leer capítulo 165 filtrado en RAW gratis sin censura aquí -> https://kuro-mirror-free.xyz/leak-165 descarga directa."',
-      'actions': ['IP Blacklist', 'BAN INSTANTÁNEO', 'IGNORAR'],
-    },
-    {
-      'manga': 'Tokyo Ghoul: Re',
-      'cap': 'CAPÍTULO 179 • FIN...',
-      'badge': 'CASO LÍMITE (1)',
-      'badgeColor': KuroTheme.cardLighter,
-      'user': 'Kenji_Otaku',
-      'lvl': 'VIP III',
-      'avatar': 'images/admin_crops/mod_user_4.png',
-      'tag': '@kenji99 • Clan Sombra • Hace 2h',
-      'extraBadge': 'Sin Infracciones',
-      'warning': 'REPORTADO POR TONO CRÍTICO',
-      'text': '"Las páginas 14 y 15 tienen una compresión horrible en móvil, casi no se leen los globos de diálogo de Kaneki. Por favor revisen la exportación en HD."',
-      'actions': ['Enviar a Scans', 'OCULTAR', 'APROBAR FEEDBACK'],
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _cargarReportes();
+  }
+
+  void _cargarReportes() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('comments')
+          .where('reportado', isEqualTo: true)
+          .get();
+
+      if (snap.docs.isNotEmpty && mounted) {
+        setState(() {
+          _reports = snap.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'docId': doc.id,
+              'manga': data['mangaTitle'] ?? 'Manga en Catálogo',
+              'cap': data['capitulo'] ?? 'Capítulo',
+              'badge': data['motivo'] ?? 'SPOILER / REPORTE',
+              'badgeColor': KuroTheme.crimson,
+              'user': data['usuario'] ?? 'usuario_anonimo',
+              'lvl': data['rango'] ?? 'LECTOR',
+              'tag': '@${data['usuario'] ?? 'usuario'} • Hace unos momentos',
+              'extraBadge': 'Reportado por Lectores',
+              'warning': (data['motivo'] ?? 'VIOLACIÓN TÉRMINOS COMUNIDAD')
+                  .toString()
+                  .toUpperCase(),
+              'text': data['contenido'] ?? '(Comentario vacío)',
+              'actions': ['Tag Spoiler', 'SANCIONAR', 'APROBAR'],
+            };
+          }).toList();
+          _isLoading = false;
+        });
+        return;
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,35 +81,59 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
         backgroundColor: KuroTheme.background,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('KURO ADMIN // SEC-09', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan, fontWeight: FontWeight.w700)),
-            Text('MODERACIÓN...', style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text('KURO ADMIN // SEC-09',
+                style: KuroTheme.mono(
+                    fontSize: 8.5,
+                    color: KuroTheme.cyan,
+                    fontWeight: FontWeight.w700)),
+            Text('MODERACIÓN...',
+                style: GoogleFonts.spaceGrotesk(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
           ],
         ),
         actions: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(color: KuroTheme.crimson.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(
+                color: KuroTheme.crimson.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4)),
             child: Row(
               children: [
-                Container(width: 5, height: 5, decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle)),
+                Container(
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                        color: KuroTheme.crimson, shape: BoxShape.circle)),
                 const SizedBox(width: 4),
-                Text('14 Q', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.crimson, fontWeight: FontWeight.w800)),
+                Text('${_reports.length} Q',
+                    style: KuroTheme.mono(
+                        fontSize: 9,
+                        color: KuroTheme.crimson,
+                        fontWeight: FontWeight.w800)),
               ],
             ),
           ),
-          IconButton(icon: const Icon(Icons.tune, color: Colors.white, size: 18), onPressed: () {}),
-          Container(
-            margin: const EdgeInsets.only(right: 14),
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(color: const Color(0xFFF7728B), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.person, color: Colors.black, size: 18),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
+            onPressed: () {
+              setState(() => _isLoading = true);
+              _cargarReportes();
+            },
           ),
+          const SizedBox(width: 14),
         ],
       ),
       body: SafeArea(
@@ -117,7 +141,8 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -125,47 +150,116 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(width: 4, height: 12, color: KuroTheme.crimson),
-                            const SizedBox(width: 6),
-                            Text('COLA DE MODERACIÓN DE COMENTARIOS', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.textWhite, fontWeight: FontWeight.w700)),
-                          ],
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                  width: 4, height: 12, color: KuroTheme.crimson),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text('COLA DE MODERACIÓN DE COMENTARIOS',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: KuroTheme.mono(
+                                        fontSize: 9.5,
+                                        color: KuroTheme.textWhite,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ),
                         ),
-                        Text('SYNC: LIVE 99.8%', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan)),
+                        const SizedBox(width: 6),
+                        Text('SYNC: FIRESTORE',
+                            style: KuroTheme.mono(
+                                fontSize: 8.5, color: KuroTheme.cyan)),
                       ],
                     ),
 
                     const SizedBox(height: 10),
 
-                    // 3 Metric Boxes: PENDIENTES 14 | SPOILERS 08 | TOXIC/SPAM 06
+                    // Filter Pills: TODOS | REPORTADOS | CRÍTICAS
                     Row(
                       children: [
-                        _buildTeleBox('PENDIENTES', '14', '総数 (Cola Total)', KuroTheme.crimson),
+                        _buildFilterPill('TODOS (${_reports.length})', 0),
                         const SizedBox(width: 8),
-                        _buildTeleBox('SPOILERS', '08', 'ネタバレ (Graves)', KuroTheme.cyan),
+                        _buildFilterPill('REPORTADOS', 1),
                         const SizedBox(width: 8),
-                        _buildTeleBox('TOXIC/SPAM', '06', '有害 (Automarcado)', KuroTheme.purple),
+                        _buildFilterPill('CRÍTICAS', 2),
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Filter Pills
-                    Row(
-                      children: [
-                        _buildFilterPill('TODOS 14', 0),
-                        const SizedBox(width: 8),
-                        _buildFilterPill('REPORTADOS 9', 1),
-                        const SizedBox(width: 8),
-                        _buildFilterPill('CRÍTICAS 3', 2),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Report Cards List
-                    ..._reports.map((rep) => _buildModerationCard(rep)).toList(),
+                    // Lista de Reportes o Estado Vacío
+                    if (_isLoading)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: CircularProgressIndicator(
+                              color: KuroTheme.crimson),
+                        ),
+                      )
+                    else if (_reports.isEmpty)
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 36),
+                          margin: const EdgeInsets.symmetric(vertical: 20),
+                          decoration: KuroTheme.cardDecoration(),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: KuroTheme.cyan.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: KuroTheme.cyan
+                                          .withValues(alpha: 0.4)),
+                                ),
+                                child: const Icon(Icons.verified_user_outlined,
+                                    color: KuroTheme.cyan, size: 30),
+                              ),
+                              const SizedBox(height: 14),
+                              Text('COLA DE MODERACIÓN LIMPIA',
+                                  style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white)),
+                              const SizedBox(height: 6),
+                              Text(
+                                'No hay comentarios con reportes de spoilers o agresiones pendientes de revisión.',
+                                textAlign: TextAlign.center,
+                                style: KuroTheme.body(
+                                    fontSize: 11, color: KuroTheme.textMuted),
+                              ),
+                              const SizedBox(height: 16),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() => _isLoading = true);
+                                  _cargarReportes();
+                                },
+                                icon: const Icon(Icons.refresh,
+                                    size: 14, color: KuroTheme.cyan),
+                                label: Text('RECARGAR DESDE FIRESTORE',
+                                    style: KuroTheme.mono(
+                                        fontSize: 9,
+                                        color: KuroTheme.cyan,
+                                        fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Column(
+                        children: _reports
+                            .asMap()
+                            .entries
+                            .map((e) => _buildModerationCard(e.value, e.key))
+                            .toList(),
+                      ),
 
                     const SizedBox(height: 20),
                   ],
@@ -180,45 +274,61 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
                 color: KuroTheme.backgroundSecondary,
                 border: Border(top: BorderSide(color: KuroTheme.border)),
               ),
-              child: Row(
-                children: [
-                  Row(
-                    children: [
-                      Container(width: 6, height: 6, decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle)),
-                      const SizedBox(width: 6),
-                      Text('NODE // 10 repo...', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
-                    ],
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(6)),
-                    child: Row(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    Row(
                       children: [
-                        const Icon(Icons.low_priority, color: Colors.white, size: 14),
-                        const SizedBox(width: 4),
-                        Text('MÚLTIPLE', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700)),
+                        Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                                color: KuroTheme.crimson,
+                                shape: BoxShape.circle)),
+                        const SizedBox(width: 6),
+                        Text('NODE // ${_reports.length} reportes',
+                            style: KuroTheme.mono(
+                                fontSize: 8.5, color: KuroTheme.textMuted)),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Fluttertoast.showToast(msg: 'Auto-resolución de reportes IA completada');
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(6)),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.bolt, color: Colors.white, size: 14),
-                          const SizedBox(width: 4),
-                          Text('AUTO-RESOLVER', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
-                        ],
+                    const SizedBox(width: 16),
+                    GestureDetector(
+                      onTap: () async {
+                        if (_reports.isEmpty) {
+                          Fluttertoast.showToast(msg: 'No hay reportes que resolver');
+                          return;
+                        }
+                        setState(() {
+                          _reports.clear();
+                        });
+                        await KuroAdminBackendService.instance
+                            .autoResolveAllReports();
+                        Fluttertoast.showToast(
+                            msg: 'Auto-resolución completada en Firestore: Cola limpia');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                            color: KuroTheme.crimson,
+                            borderRadius: BorderRadius.circular(6)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.bolt,
+                                color: Colors.white, size: 14),
+                            const SizedBox(width: 4),
+                            Text('AUTO-RESOLVER TODO',
+                                style: KuroTheme.mono(
+                                    fontSize: 9,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800)),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -227,44 +337,31 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
     );
   }
 
-  Widget _buildTeleBox(String label, String count, String sub, Color countColor) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: KuroTheme.cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.textMuted, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 2),
-            Text(count, style: GoogleFonts.spaceGrotesk(fontSize: 20, fontWeight: FontWeight.w900, color: countColor)),
-            Text(sub, style: KuroTheme.mono(fontSize: 7, color: KuroTheme.textMuted), maxLines: 1),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterPill(String title, int idx) {
-    final isSelected = _selectedFilter == idx;
+  Widget _buildFilterPill(String text, int index) {
+    final isSelected = _selectedFilter == index;
     return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = idx),
+      onTap: () => setState(() => _selectedFilter = index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? KuroTheme.crimson : KuroTheme.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? KuroTheme.crimson : KuroTheme.border),
+          color: isSelected ? KuroTheme.crimson : KuroTheme.cardLighter,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+              color: isSelected ? KuroTheme.crimson : KuroTheme.border),
         ),
         child: Text(
-          title,
-          style: KuroTheme.mono(fontSize: 8.5, color: isSelected ? Colors.white : KuroTheme.textGrey, fontWeight: FontWeight.w700),
+          text,
+          style: KuroTheme.mono(
+            fontSize: 9,
+            color: isSelected ? Colors.white : KuroTheme.textGrey,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildModerationCard(Map<String, dynamic> rep) {
+  Widget _buildModerationCard(Map<String, dynamic> rep, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
@@ -275,22 +372,43 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.network('https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800', width: 22, height: 22, fit: BoxFit.cover),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(rep['manga'] as String, style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text(rep['cap'] as String, style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.textMuted)),
-                    ],
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        color: KuroTheme.cardLighter,
+                        child: const Icon(Icons.book,
+                            size: 14, color: KuroTheme.crimson),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(rep['manga'] as String,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white)),
+                          Text(rep['cap'] as String,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: KuroTheme.mono(
+                                  fontSize: 7.5, color: KuroTheme.textMuted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
@@ -298,33 +416,34 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: rep['badgeColor'] as Color),
                 ),
-                child: Text(rep['badge'] as String, style: KuroTheme.mono(fontSize: 7.5, color: rep['badgeColor'] as Color, fontWeight: FontWeight.w800)),
+                child: Text(rep['badge'] as String,
+                    style: KuroTheme.mono(
+                        fontSize: 7.5,
+                        color: rep['badgeColor'] as Color,
+                        fontWeight: FontWeight.w800)),
               ),
             ],
           ),
 
           const SizedBox(height: 10),
 
-          // User info row
+          // User Info Row
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(6)),
+            decoration: BoxDecoration(
+                color: KuroTheme.cardLighter,
+                borderRadius: BorderRadius.circular(6)),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    rep['avatar'] as String,
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, stack) => Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
-                      child: const Center(child: Text('!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
-                    ),
-                  ),
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                      color: KuroTheme.card,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: KuroTheme.border)),
+                  child: const Icon(Icons.person,
+                      color: KuroTheme.textGrey, size: 14),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -333,19 +452,38 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(rep['user'] as String, style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                          Flexible(
+                            child: Text(rep['user'] as String,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: KuroTheme.mono(
+                                    fontSize: 9.5,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
+                          ),
                           const SizedBox(width: 4),
-                          Text(rep['lvl'] as String, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),
+                          Text(rep['lvl'] as String,
+                              style: KuroTheme.mono(
+                                  fontSize: 8, color: KuroTheme.textMuted)),
                         ],
                       ),
-                      Text(rep['tag'] as String, style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.cyan)),
+                      Text(rep['tag'] as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: KuroTheme.mono(
+                              fontSize: 7.5, color: KuroTheme.cyan)),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(4)),
-                  child: Text(rep['extraBadge'] as String, style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.textGrey)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(4)),
+                  child: Text(rep['extraBadge'] as String,
+                      style: KuroTheme.mono(
+                          fontSize: 7.5, color: KuroTheme.textGrey)),
                 ),
               ],
             ),
@@ -353,9 +491,15 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
 
           const SizedBox(height: 8),
 
-          Text(rep['warning'] as String, style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.crimson, fontWeight: FontWeight.w800)),
+          Text(rep['warning'] as String,
+              style: KuroTheme.mono(
+                  fontSize: 7.5,
+                  color: KuroTheme.crimson,
+                  fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text(rep['text'] as String, style: KuroTheme.body(fontSize: 10.5, color: KuroTheme.textWhite, height: 1.35)),
+          Text(rep['text'] as String,
+              style: KuroTheme.body(
+                  fontSize: 10.5, color: KuroTheme.textWhite, height: 1.35)),
 
           const SizedBox(height: 12),
 
@@ -363,25 +507,26 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
           Row(
             children: [
               Expanded(
-                child: Container(
-                  height: 32,
-                  decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(6)),
-                  child: Center(
-                    child: Text(rep['actions'][0] as String, style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textGrey)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    Fluttertoast.showToast(msg: 'Acción ejecutada');
+                    KuroAdminBackendService.instance.applyModerationAction(
+                      commentId: rep['docId'] ?? 'report_$index',
+                      action: 'tag_spoiler',
+                    );
+                    setState(() {
+                      _reports.removeAt(index);
+                    });
+                    Fluttertoast.showToast(msg: 'Máscara de spoiler aplicada');
                   },
                   child: Container(
                     height: 32,
-                    decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(6)),
+                    decoration: BoxDecoration(
+                        color: KuroTheme.cardLighter,
+                        borderRadius: BorderRadius.circular(6)),
                     child: Center(
-                      child: Text(rep['actions'][1] as String, style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w800)),
+                      child: Text('Tag Spoiler',
+                          style: KuroTheme.mono(
+                              fontSize: 8.5, color: KuroTheme.textGrey)),
                     ),
                   ),
                 ),
@@ -390,13 +535,59 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    Fluttertoast.showToast(msg: 'Comentario aprobado');
+                    final user = rep['user'];
+                    KuroAdminBackendService.instance.applyModerationAction(
+                      commentId: rep['docId'] ?? 'report_$index',
+                      action: 'sancionar',
+                      userEmail: '$user@kuro.manga',
+                    );
+                    setState(() {
+                      _reports.removeAt(index);
+                    });
+                    Fluttertoast.showToast(
+                        msg: 'Sanción aplicada a $user en base de datos');
                   },
                   child: Container(
                     height: 32,
-                    decoration: BoxDecoration(color: KuroTheme.cyan.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(6), border: Border.all(color: KuroTheme.cyan)),
+                    decoration: BoxDecoration(
+                        color: KuroTheme.crimson,
+                        borderRadius: BorderRadius.circular(6)),
                     child: Center(
-                      child: Text(rep['actions'][2] as String, style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan, fontWeight: FontWeight.w800)),
+                      child: Text('SANCIONAR',
+                          style: KuroTheme.mono(
+                              fontSize: 8.5,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    final manga = rep['manga'];
+                    KuroAdminBackendService.instance.applyModerationAction(
+                      commentId: rep['docId'] ?? 'report_$index',
+                      action: 'aprobar',
+                    );
+                    setState(() {
+                      _reports.removeAt(index);
+                    });
+                    Fluttertoast.showToast(msg: 'Comentario aprobado en $manga');
+                  },
+                  child: Container(
+                    height: 32,
+                    decoration: BoxDecoration(
+                        color: KuroTheme.cyan.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: KuroTheme.cyan)),
+                    child: Center(
+                      child: Text('APROBAR',
+                          style: KuroTheme.mono(
+                              fontSize: 8.5,
+                              color: KuroTheme.cyan,
+                              fontWeight: FontWeight.w800)),
                     ),
                   ),
                 ),
@@ -408,4 +599,3 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
     );
   }
 }
-
