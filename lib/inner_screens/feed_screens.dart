@@ -33,6 +33,7 @@ class _FeedScreensState extends State<FeedScreens> {
     //final mangasProvider = Provider.of<MangasProvider>(context, listen: false);
     //mangasProvider.fetchMangas();
     Future.delayed(Duration.zero, () {
+      if (!mounted) return;
       final mangasProvider =
           Provider.of<MangasProvider>(context, listen: false);
       mangasProvider.fetchMangas();
@@ -88,7 +89,7 @@ class _FeedScreensState extends State<FeedScreens> {
                         prefixIcon: const Icon(Icons.search),
                         suffix: IconButton(
                           onPressed: () {
-                            _searchTextController!.clear();
+                            _searchTextController.clear();
                             _searchTextFocusNode.unfocus();
                           },
                           icon: Icon(
@@ -101,7 +102,7 @@ class _FeedScreensState extends State<FeedScreens> {
                   ),
                 ),
               ),
-              _searchTextController!.text.isNotEmpty && listMangaSearch.isEmpty
+              _searchTextController.text.isNotEmpty && listMangaSearch.isEmpty
                   ? const EmptyMangaWidget(
                       text: 'No está disponible el manga que buscas')
                   : GridView.count(
@@ -112,11 +113,11 @@ class _FeedScreensState extends State<FeedScreens> {
                       // crossAxisSpacing: 10,
                       childAspectRatio: size.width / (size.height * 0.59),
                       children: List.generate(
-                          _searchTextController!.text.isNotEmpty
+                          _searchTextController.text.isNotEmpty
                               ? listMangaSearch.length
                               : allMangas.length, (index) {
                         return ChangeNotifierProvider.value(
-                          value: _searchTextController!.text.isNotEmpty
+                          value: _searchTextController.text.isNotEmpty
                               ? listMangaSearch[index]
                               : allMangas[index],
                           child: const FeedsWidget(),

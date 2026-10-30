@@ -1,8 +1,6 @@
 import 'package:aplicacion_manga/inner_screens/manga_details.dart';
 import 'package:aplicacion_manga/models/mangas_models.dart';
-import 'package:aplicacion_manga/providers/wishlist_providers.dart';
 import 'package:aplicacion_manga/services/utils.dart';
-import 'package:aplicacion_manga/widgets/hearth_button.dart';
 import 'package:fancy_shimmer_image/fancy_shimmer_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -34,9 +32,6 @@ class _FeedsWidgetState extends State<FeedsWidget> {
     final Color color = Utils(context).color;
     Size size = Utils(context).getScreenSize;
     final mangaModel = Provider.of<MangasModels>(context);
-    final wishListProvider = Provider.of<WishListProvider>(context);
-    bool? isWishList =
-        wishListProvider.getWishListItems.containsKey(mangaModel.id);
 
     return Center(
       child: Material(

@@ -7,7 +7,8 @@ class AdminPaginaConfigUsuario extends StatefulWidget {
   const AdminPaginaConfigUsuario({Key? key}) : super(key: key);
 
   @override
-  State<AdminPaginaConfigUsuario> createState() => _AdminPaginaConfigUsuarioState();
+  State<AdminPaginaConfigUsuario> createState() =>
+      _AdminPaginaConfigUsuarioState();
 }
 
 class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
@@ -28,16 +29,19 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
         ),
         title: Text(
           'CONFIGURACIÓN KURO',
-          style: KuroTheme.mono(fontSize: 11, color: KuroTheme.textWhite, fontWeight: FontWeight.w700),
+          style: KuroTheme.mono(
+              fontSize: 11,
+              color: KuroTheme.textWhite,
+              fontWeight: FontWeight.w700),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.bookmark_border, color: Colors.white, size: 20), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20), onPressed: () {}),
           Container(
             margin: const EdgeInsets.only(right: 14),
             width: 32,
             height: 32,
-            decoration: BoxDecoration(color: const Color(0xFFF7728B), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                color: const Color(0xFFF7728B),
+                borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.person, color: Colors.black, size: 20),
           ),
         ],
@@ -50,11 +54,18 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
             // Chip top
             Row(
               children: [
-                Container(width: 6, height: 6, decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle)),
+                Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                        color: KuroTheme.crimson, shape: BoxShape.circle)),
                 const SizedBox(width: 6),
                 Text(
                   '// AJUSTES DEL SISTEMA // 設定',
-                  style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700),
+                  style: KuroTheme.mono(
+                      fontSize: 9.5,
+                      color: KuroTheme.crimson,
+                      fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -72,8 +83,14 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('01 // VISUAL & DISPLAY', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textWhite, fontWeight: FontWeight.w700)),
-                Text('ENGINE: KOMA-OLED', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                Text('01 // VISUAL & DISPLAY',
+                    style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textWhite,
+                        fontWeight: FontWeight.w700)),
+                Text('ENGINE: KOMA-OLED',
+                    style: KuroTheme.mono(
+                        fontSize: 8.5, color: KuroTheme.textMuted)),
               ],
             ),
             const SizedBox(height: 10),
@@ -87,7 +104,8 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                 child: Container(
                   width: 24,
                   height: 24,
-                  decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                      color: KuroTheme.crimson, shape: BoxShape.circle),
                   child: const Icon(Icons.check, color: Colors.white, size: 16),
                 ),
               ),
@@ -99,9 +117,17 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               subtitle: 'Carmesí Puro (#E11D48)',
               trailing: Row(
                 children: [
-                  Container(width: 10, height: 10, decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle)),
+                  Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                          color: KuroTheme.crimson, shape: BoxShape.circle)),
                   const SizedBox(width: 6),
-                  Text('ACTIVO', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textWhite, fontWeight: FontWeight.w700)),
+                  Text('ACTIVO',
+                      style: KuroTheme.mono(
+                          fontSize: 8.5,
+                          color: KuroTheme.textWhite,
+                          fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -113,7 +139,8 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               trailing: Container(
                 width: 26,
                 height: 26,
-                decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                    color: KuroTheme.crimson, shape: BoxShape.circle),
                 child: const Icon(Icons.tune, color: Colors.white, size: 14),
               ),
             ),
@@ -124,8 +151,14 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('02 // CACHÉ & STORAGE', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textWhite, fontWeight: FontWeight.w700)),
-                Text('NVME BUFFER', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan)),
+                Text('02 // CACHÉ & STORAGE',
+                    style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textWhite,
+                        fontWeight: FontWeight.w700)),
+                Text('NVME BUFFER',
+                    style:
+                        KuroTheme.mono(fontSize: 8.5, color: KuroTheme.cyan)),
               ],
             ),
             const SizedBox(height: 10),
@@ -141,16 +174,26 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                       Container(
                         width: 32,
                         height: 32,
-                        decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.inventory_2_outlined, color: KuroTheme.textWhite, size: 16),
+                        decoration: BoxDecoration(
+                            color: KuroTheme.cardLighter,
+                            borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.inventory_2_outlined,
+                            color: KuroTheme.textWhite, size: 16),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Capítulos & Miniaturas', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text('$_cacheUsed GB usados en 12 tomos y búfer temporal.', style: KuroTheme.body(fontSize: 10, color: KuroTheme.textGrey)),
+                            Text('Capítulos & Miniaturas',
+                                style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white)),
+                            Text(
+                                '$_cacheUsed GB usados en 12 tomos y búfer temporal.',
+                                style: KuroTheme.body(
+                                    fontSize: 10, color: KuroTheme.textGrey)),
                           ],
                         ),
                       ),
@@ -160,17 +203,30 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('ESPACIO EN DISCO UTILIZADO', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
-                      Text('28.4%', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textWhite, fontWeight: FontWeight.w700)),
+                      Text('ESPACIO EN DISCO UTILIZADO',
+                          style: KuroTheme.mono(
+                              fontSize: 8.5, color: KuroTheme.textMuted)),
+                      Text('28.4%',
+                          style: KuroTheme.mono(
+                              fontSize: 9,
+                              color: KuroTheme.textWhite,
+                              fontWeight: FontWeight.w700)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Container(
                     height: 4,
-                    decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                        color: KuroTheme.cardLighter,
+                        borderRadius: BorderRadius.circular(2)),
                     child: Row(
                       children: [
-                        Expanded(flex: 28, child: Container(decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(2)))),
+                        Expanded(
+                            flex: 28,
+                            child: Container(
+                                decoration: BoxDecoration(
+                                    color: KuroTheme.crimson,
+                                    borderRadius: BorderRadius.circular(2)))),
                         const Expanded(flex: 72, child: SizedBox()),
                       ],
                     ),
@@ -188,14 +244,20 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                       decoration: BoxDecoration(
                         color: KuroTheme.cardLighter,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: KuroTheme.crimson.withValues(alpha: 0.4)),
+                        border: Border.all(
+                            color: KuroTheme.crimson.withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.delete_outline, color: KuroTheme.crimson, size: 16),
+                          const Icon(Icons.delete_outline,
+                              color: KuroTheme.crimson, size: 16),
                           const SizedBox(width: 6),
-                          Text('LIMPIAR CACHÉ LOCAL', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700)),
+                          Text('LIMPIAR CACHÉ LOCAL',
+                              style: KuroTheme.mono(
+                                  fontSize: 9.5,
+                                  color: KuroTheme.crimson,
+                                  fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
@@ -218,27 +280,39 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: KuroTheme.crimson, size: 18),
+                        const Icon(Icons.warning_amber_rounded,
+                            color: KuroTheme.crimson, size: 18),
                         const SizedBox(width: 8),
-                        Text('¿Confirmar Limpieza de Caché?', style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                        Text('¿Confirmar Limpieza de Caché?',
+                            style: GoogleFonts.spaceGrotesk(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Se liberarán $_cacheUsed GB de memoria caché. Los capítulos guardados para lectura sin conexión deberán descargarse nuevamente.',
-                      style: KuroTheme.body(fontSize: 10.5, color: KuroTheme.textGrey),
+                      style: KuroTheme.body(
+                          fontSize: 10.5, color: KuroTheme.textGrey),
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _showConfirmPurge = false),
+                            onTap: () =>
+                                setState(() => _showConfirmPurge = false),
                             child: Container(
                               height: 38,
-                              decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(8)),
+                              decoration: BoxDecoration(
+                                  color: KuroTheme.cardLighter,
+                                  borderRadius: BorderRadius.circular(8)),
                               child: Center(
-                                child: Text('CANCELAR', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textGrey)),
+                                child: Text('CANCELAR',
+                                    style: KuroTheme.mono(
+                                        fontSize: 10,
+                                        color: KuroTheme.textGrey)),
                               ),
                             ),
                           ),
@@ -251,17 +325,25 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                                 _cacheUsed = 0.05;
                                 _showConfirmPurge = false;
                               });
-                              Fluttertoast.showToast(msg: 'Caché liberado con éxito');
+                              Fluttertoast.showToast(
+                                  msg: 'Caché liberado con éxito');
                             },
                             child: Container(
                               height: 38,
-                              decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(8)),
+                              decoration: BoxDecoration(
+                                  color: KuroTheme.crimson,
+                                  borderRadius: BorderRadius.circular(8)),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.bolt, color: Colors.white, size: 14),
+                                  const Icon(Icons.bolt,
+                                      color: Colors.white, size: 14),
                                   const SizedBox(width: 4),
-                                  Text('CONFIRMAR Y PURGAR', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
+                                  Text('CONFIRMAR Y PURGAR',
+                                      style: KuroTheme.mono(
+                                          fontSize: 9,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800)),
                                 ],
                               ),
                             ),
@@ -280,16 +362,37 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('03 // LEGAL & TÉRMINOS', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textWhite, fontWeight: FontWeight.w700)),
-                Text('JURISDICCIÓN JP/GL', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                Text('03 // LEGAL & TÉRMINOS',
+                    style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textWhite,
+                        fontWeight: FontWeight.w700)),
+                Text('JURISDICCIÓN JP/GL',
+                    style: KuroTheme.mono(
+                        fontSize: 8.5, color: KuroTheme.textMuted)),
               ],
             ),
             const SizedBox(height: 10),
-            _buildTile(icon: Icons.shield_outlined, title: 'Políticas de Privacidad', subtitle: 'Actualizado Feb 2025', trailing: const Icon(Icons.arrow_forward_ios, color: KuroTheme.textMuted, size: 12)),
+            _buildTile(
+                icon: Icons.shield_outlined,
+                title: 'Políticas de Privacidad',
+                subtitle: 'Actualizado Feb 2025',
+                trailing: const Icon(Icons.arrow_forward_ios,
+                    color: KuroTheme.textMuted, size: 12)),
             const SizedBox(height: 8),
-            _buildTile(icon: Icons.gavel_outlined, title: 'Términos de Servicio', subtitle: 'Avisos Legales y Licencias', trailing: const Icon(Icons.arrow_forward_ios, color: KuroTheme.textMuted, size: 12)),
+            _buildTile(
+                icon: Icons.gavel_outlined,
+                title: 'Términos de Servicio',
+                subtitle: 'Avisos Legales y Licencias',
+                trailing: const Icon(Icons.arrow_forward_ios,
+                    color: KuroTheme.textMuted, size: 12)),
             const SizedBox(height: 8),
-            _buildTile(icon: Icons.verified_user_outlined, title: 'Licencias & Scans', subtitle: 'Código Abierto y Editorial Kuro', trailing: const Icon(Icons.arrow_forward_ios, color: KuroTheme.textMuted, size: 12)),
+            _buildTile(
+                icon: Icons.verified_user_outlined,
+                title: 'Licencias & Scans',
+                subtitle: 'Código Abierto y Editorial Kuro',
+                trailing: const Icon(Icons.arrow_forward_ios,
+                    color: KuroTheme.textMuted, size: 12)),
 
             const SizedBox(height: 24),
 
@@ -297,8 +400,14 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('04 // KERNEL & RUNTIME', style: KuroTheme.mono(fontSize: 10, color: KuroTheme.textWhite, fontWeight: FontWeight.w700)),
-                Text('BUILD 894', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted)),
+                Text('04 // KERNEL & RUNTIME',
+                    style: KuroTheme.mono(
+                        fontSize: 10,
+                        color: KuroTheme.textWhite,
+                        fontWeight: FontWeight.w700)),
+                Text('BUILD 894',
+                    style: KuroTheme.mono(
+                        fontSize: 8.5, color: KuroTheme.textMuted)),
               ],
             ),
             const SizedBox(height: 10),
@@ -308,8 +417,12 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               subtitle: 'Kuro v2.4.1 (Canary / Stable)',
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(4)),
-                child: Text('v2.4.1', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey)),
+                decoration: BoxDecoration(
+                    color: KuroTheme.cardLighter,
+                    borderRadius: BorderRadius.circular(4)),
+                child: Text('v2.4.1',
+                    style:
+                        KuroTheme.mono(fontSize: 9, color: KuroTheme.textGrey)),
               ),
             ),
             const SizedBox(height: 8),
@@ -317,12 +430,17 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               icon: Icons.check_circle_outline,
               title: 'Motor Koma Cinematic Core v4.2',
               subtitle: 'Renderizado vectorial activo',
-              trailing: Text('AL DÍA', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.cyan, fontWeight: FontWeight.w800)),
+              trailing: Text('AL DÍA',
+                  style: KuroTheme.mono(
+                      fontSize: 9,
+                      color: KuroTheme.cyan,
+                      fontWeight: FontWeight.w800)),
             ),
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () {
-                Fluttertoast.showToast(msg: 'El sistema Kuro v2.4.1 se encuentra actualizado');
+                Fluttertoast.showToast(
+                    msg: 'El sistema Kuro v2.4.1 se encuentra actualizado');
               },
               child: Container(
                 width: double.infinity,
@@ -337,7 +455,11 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                   children: [
                     const Icon(Icons.refresh, color: Colors.white, size: 16),
                     const SizedBox(width: 8),
-                    Text('BUSCAR ACTUALIZACIONES', style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                    Text('BUSCAR ACTUALIZACIONES',
+                        style: KuroTheme.mono(
+                            fontSize: 9.5,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -349,7 +471,10 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               child: Text(
                 '黒 // KURO CYBER-EDITORIAL ARCHIVE\nTOKYO / SHINJUKU • 2025 ALL RIGHTS RESERVED',
                 textAlign: TextAlign.center,
-                style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textMuted, letterSpacing: 1.0),
+                style: KuroTheme.mono(
+                    fontSize: 8.5,
+                    color: KuroTheme.textMuted,
+                    letterSpacing: 1.0),
               ),
             ),
             const SizedBox(height: 20),
@@ -373,7 +498,9 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                color: KuroTheme.cardLighter,
+                borderRadius: BorderRadius.circular(8)),
             child: Icon(icon, color: KuroTheme.textWhite, size: 16),
           ),
           const SizedBox(width: 12),
@@ -381,8 +508,14 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text(subtitle, style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
+                Text(title,
+                    style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+                Text(subtitle,
+                    style: KuroTheme.body(
+                        fontSize: 10, color: KuroTheme.textMuted)),
               ],
             ),
           ),

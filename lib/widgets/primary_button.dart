@@ -1,5 +1,4 @@
 //import 'package:aplicacion_manga/theme.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class PrimaryButton extends StatelessWidget {

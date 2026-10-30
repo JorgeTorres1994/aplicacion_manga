@@ -16,7 +16,7 @@ class AdminViewedRecentlyScreen extends StatefulWidget {
   const AdminViewedRecentlyScreen({Key? key}) : super(key: key);
 
   @override
-  _AdminViewedRecentlyScreenState createState() =>
+  State<AdminViewedRecentlyScreen> createState() =>
       _AdminViewedRecentlyScreenState();
 }
 

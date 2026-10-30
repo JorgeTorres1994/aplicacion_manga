@@ -14,7 +14,7 @@ class ViewedRecentlyWidget extends StatefulWidget {
   const ViewedRecentlyWidget({Key? key}) : super(key: key);
 
   @override
-  _ViewedRecentlyWidgetState createState() => _ViewedRecentlyWidgetState();
+  State<ViewedRecentlyWidget> createState() => _ViewedRecentlyWidgetState();
 }
 
 class _ViewedRecentlyWidgetState extends State<ViewedRecentlyWidget> {

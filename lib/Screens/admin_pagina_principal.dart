@@ -9,7 +9,7 @@ class AdminPaginaPrincipal extends StatefulWidget {
   const AdminPaginaPrincipal({Key? key}) : super(key: key);
 
   @override
-  _AdminPaginaPrincipalState createState() => _AdminPaginaPrincipalState();
+  State<AdminPaginaPrincipal> createState() => _AdminPaginaPrincipalState();
 }
 
 class _AdminPaginaPrincipalState extends State<AdminPaginaPrincipal> {
@@ -41,9 +41,12 @@ class _AdminPaginaPrincipalState extends State<AdminPaginaPrincipal> {
         child: Row(
           children: [
             _buildNavItem(icon: Icons.home_filled, label: 'INICIO', index: 0),
-            _buildNavItem(icon: Icons.explore_outlined, label: 'EXPLORAR', index: 1),
-            _buildNavItem(icon: Icons.menu_book_outlined, label: 'BIBLIOTECA', index: 2),
-            _buildNavItem(icon: Icons.person_outline, label: 'PERFIL', index: 3),
+            _buildNavItem(
+                icon: Icons.explore_outlined, label: 'EXPLORAR', index: 1),
+            _buildNavItem(
+                icon: Icons.menu_book_outlined, label: 'BIBLIOTECA', index: 2),
+            _buildNavItem(
+                icon: Icons.person_outline, label: 'PERFIL', index: 3),
           ],
         ),
       ),

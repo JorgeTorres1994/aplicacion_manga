@@ -73,18 +73,18 @@ class _MainAppState extends State<MainApp> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const MaterialApp(
               debugShowCheckedModeBanner: false,
-              home: const Scaffold(
-                body: const Center(
-                  child: const CircularProgressIndicator(),
+              home: Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(),
                 ),
               ),
             );
           } else if (snapshot.hasError) {
             const MaterialApp(
               debugShowCheckedModeBanner: false,
-              home: const Scaffold(
-                body: const Center(
-                  child: const Text('A ocurrido un error'),
+              home: Scaffold(
+                body: Center(
+                  child: Text('A ocurrido un error'),
                 ),
               ),
             );
@@ -105,7 +105,7 @@ class _MainAppState extends State<MainApp> {
               return MaterialApp(
                   debugShowCheckedModeBanner: false,
                   theme: Styles.themeData(themeProvider.getDarkTheme, context),
-                  home: LoginPage(),
+                  home: const LoginPage(),
                   routes: {
                     OnViewScreen.routeName: (ctx) => const OnViewScreen(),
                     FeedScreens.routeName: (ctx) => const FeedScreens(),

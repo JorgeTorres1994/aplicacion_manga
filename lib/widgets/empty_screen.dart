@@ -40,7 +40,7 @@ class EmptyScreen extends StatelessWidget {
               ),
               const Text(
                 'Ups...',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.redAccent,
                   fontSize: 40,
                   fontWeight: FontWeight.w700,

@@ -1,14 +1,10 @@
 import 'package:aplicacion_manga/inner_screens/manga_details.dart';
 import 'package:aplicacion_manga/models/mangas_models.dart';
-import 'package:aplicacion_manga/providers/wishlist_providers.dart';
 import 'package:aplicacion_manga/services/utils.dart';
 import 'package:aplicacion_manga/widgets/textos_widget.dart';
 import 'package:fancy_shimmer_image/fancy_shimmer_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_iconly/flutter_iconly.dart';
 import 'package:provider/provider.dart';
-
-import 'hearth_button.dart';
 
 class OnViewWidget extends StatefulWidget {
   const OnViewWidget({Key? key}) : super(key: key);
@@ -24,9 +20,6 @@ class _OnViewWidgetState extends State<OnViewWidget> {
     final Color color = Utils(context).color;
     //final theme = Utils(context).getTheme;
     Size size = Utils(context).getScreenSize;
-    final wishListProvider = Provider.of<WishListProvider>(context);
-    bool? isWishList =
-        wishListProvider.getWishListItems.containsKey(mangaModel.id);
 
     return Center(
       // Utilizamos el widget Center para centrar todo el contenido
@@ -79,7 +72,7 @@ class _OnViewWidgetState extends State<OnViewWidget> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       // Centramos horizontalmente los elementos del Row
-                      children: const [
+                      children: [
                         /*GestureDetector(
                           onTap: () {},
                           child: Icon(

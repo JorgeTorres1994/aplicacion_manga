@@ -1,5 +1,7 @@
 import 'package:aplicacion_manga/Screens/admin_pagina_config_usuario.dart';
 import 'package:aplicacion_manga/Screens/login_page.dart';
+import 'package:aplicacion_manga/Screens/wishlist/admin_wishlist_screen.dart';
+import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -277,7 +279,10 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedTab = 1),
+                        onTap: () {
+                          setState(() => _selectedTab = 1);
+                          Navigator.push(context, MaterialPageRoute(builder: (c) => const AdminWishListScreem()));
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
@@ -496,74 +501,87 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: KuroTheme.cardDecoration(),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(imgUrl, width: 48, height: 62, fit: BoxFit.cover),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (ctx) => OnlineViewScreen(
+                pdfUrl: '',
+                mangaTitle: '$title $chapter',
+              ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          if (badge.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(3)),
-                              child: Text(badge, style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w800)),
-                            ),
-                            const SizedBox(width: 6),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: KuroTheme.cardDecoration(),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(imgUrl, width: 48, height: 62, fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            if (badge.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(3)),
+                                child: Text(badge, style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w800)),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Text(title, style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted, fontWeight: FontWeight.w700)),
                           ],
-                          Text(title, style: KuroTheme.mono(fontSize: 9, color: KuroTheme.textMuted, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      Text(timeAgo, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(chapter, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1),
-                  Text(sub, style: KuroTheme.body(fontSize: 9.5, color: KuroTheme.textGrey), maxLines: 1),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(progressText, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.cyan)),
-                      Text(extraText, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Container(
-                    height: 2.5,
-                    decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(2)),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: progress,
-                      child: Container(decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(2))),
+                        ),
+                        Text(timeAgo, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(chapter, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white), maxLines: 1),
+                    Text(sub, style: KuroTheme.body(fontSize: 9.5, color: KuroTheme.textGrey), maxLines: 1),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(progressText, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.cyan)),
+                        Text(extraText, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Container(
+                      height: 2.5,
+                      decoration: BoxDecoration(color: KuroTheme.cardLighter, borderRadius: BorderRadius.circular(2)),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: progress,
+                        child: Container(decoration: BoxDecoration(color: KuroTheme.crimson, borderRadius: BorderRadius.circular(2))),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: progress == 1.0 ? KuroTheme.cardLighter : KuroTheme.crimson,
-                shape: BoxShape.circle,
+              const SizedBox(width: 10),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: progress == 1.0 ? KuroTheme.cardLighter : KuroTheme.crimson,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(progress == 1.0 ? Icons.replay : Icons.play_arrow, color: Colors.white, size: 18),
               ),
-              child: Icon(progress == 1.0 ? Icons.replay : Icons.play_arrow, color: Colors.white, size: 18),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
