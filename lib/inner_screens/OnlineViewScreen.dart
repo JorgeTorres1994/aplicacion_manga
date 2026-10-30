@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:aplicacion_manga/services/reader_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
@@ -39,6 +40,8 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
 
   String? _pdfPath;
   bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
   int _currentPage = 1;
   int _totalPages = 1;
   bool _showDownloadBanner = true;
@@ -72,23 +75,74 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
   }
 
   Future<void> _loadContent() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+      _effectiveImages = [];
+      _pdfPath = null;
+    });
 
     // 1. Si ya se proporcionó una lista de imágenes directas
     if (widget.pageImages != null && widget.pageImages!.isNotEmpty) {
-      setState(() {
-        _effectiveImages = List<String>.from(widget.pageImages!);
-        _totalPages = _effectiveImages.length;
-        _isLoading = false;
-      });
-      return;
+      final validImages =
+          widget.pageImages!.where((img) => img.trim().isNotEmpty).toList();
+      if (validImages.isNotEmpty) {
+        setState(() {
+          _effectiveImages = validImages;
+          _totalPages = validImages.length;
+          _isLoading = false;
+        });
+        return;
+      }
+    }
+
+    // 1.b Si no se pasaron imágenes, buscar en Firestore si el capítulo tiene subcolección 'paginas'
+    final mId = widget.mangaId;
+    if (mId != null && mId.isNotEmpty) {
+      try {
+        final capsSnap = await FirebaseFirestore.instance
+            .collection('mangas')
+            .doc(mId)
+            .collection('capitulos')
+            .get();
+
+        for (final doc in capsSnap.docs) {
+          final data = doc.data();
+          final capName = data['nombre']?.toString() ?? '';
+          final capNum = data['capituloDisplay']?.toString() ??
+              data['numero']?.toString() ??
+              '';
+          final cTitle = widget.chapterTitle ?? '';
+          final match = (cTitle.isNotEmpty && capNum.isNotEmpty && cTitle.contains(capNum)) ||
+              (cTitle.isNotEmpty && capName.isNotEmpty && cTitle.contains(capName)) ||
+              (capName.isNotEmpty && widget.mangaTitle.contains(capName));
+
+          final pages = (data['paginas'] as List?)
+                  ?.map((e) => e.toString().trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList() ??
+              [];
+
+          if ((match || capsSnap.docs.length == 1) && pages.isNotEmpty) {
+            setState(() {
+              _effectiveImages = pages;
+              _totalPages = pages.length;
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+      } catch (_) {}
     }
 
     final raw = widget.pdfUrl.trim();
     if (raw.isEmpty) {
       setState(() {
-        _effectiveImages = [];
         _isLoading = false;
+        _hasError = true;
+        _errorMessage =
+            'Aún no se ha subido ningún archivo o página para este capítulo.';
       });
       return;
     }
@@ -134,14 +188,32 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
     }
 
     // 4. Si es una URL remota de red
+    final uri = Uri.tryParse(raw);
+    if (uri == null || (!uri.isScheme('http') && !uri.isScheme('https'))) {
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage =
+            'El enlace del capítulo no es válido o aún no ha sido cargado en el servidor.';
+      });
+      return;
+    }
+
     try {
       final dir = await getTemporaryDirectory();
       final hash = raw.hashCode.abs().toString();
-      final safeTitle = widget.mangaTitle.replaceAll(RegExp(r'[^\w\s]+'), '_');
+      final safeTitle =
+          widget.mangaTitle.replaceAll(RegExp(r'[^\w\s]+'), '_');
 
-      final response = await http.get(Uri.parse(raw));
+      final response =
+          await http.get(uri).timeout(const Duration(seconds: 12));
+
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
+        if (bytes.isEmpty) {
+          throw Exception('El contenido recibido está vacío.');
+        }
+
         // Comprobar la firma mágica del archivo binario
         final isPdf = bytes.length >= 4 &&
             bytes[0] == 0x25 &&
@@ -167,14 +239,15 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
           });
         }
       } else {
-        throw Exception('Status code: ${response.statusCode}');
+        throw Exception('El servidor respondió con código ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error descargando contenido: $e');
+      debugPrint('Error descargando contenido del visor: $e');
       setState(() {
-        _effectiveImages = [raw];
-        _totalPages = 1;
         _isLoading = false;
+        _hasError = true;
+        _errorMessage =
+            'No se pudo cargar el manga o capítulo.\nAún no ha sido subido el archivo correspondiente a este capítulo.';
       });
     }
   }
@@ -393,8 +466,75 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                 children: [
                   if (_isLoading)
                     const Center(
-                      child: CircularProgressIndicator(
-                          color: KuroTheme.crimson, strokeWidth: 2),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                              color: KuroTheme.crimson, strokeWidth: 2),
+                          SizedBox(height: 12),
+                          Text(
+                            'Cargando páginas del manga...',
+                            style: TextStyle(
+                              color: KuroTheme.textGrey,
+                              fontSize: 11,
+                              fontFamily: 'Courier',
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (_hasError || (_effectiveImages.isEmpty && _pdfPath == null))
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                color: KuroTheme.card,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: KuroTheme.crimson.withValues(alpha: 0.6)),
+                              ),
+                              child: const Icon(Icons.menu_book, color: KuroTheme.crimson, size: 34),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'CAPÍTULO NO DISPONIBLE',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _errorMessage.isNotEmpty
+                                  ? _errorMessage
+                                  : 'Aún no se ha subido este manga y/o capítulo a la plataforma.\nEspera a que el administrador publique los tomos o páginas.',
+                              style: KuroTheme.body(fontSize: 11.5, color: KuroTheme.textMuted),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.arrow_back, size: 16, color: Colors.white),
+                              label: Text(
+                                'REGRESAR AL DETALLE',
+                                style: KuroTheme.mono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: KuroTheme.crimson,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     )
                   else if (_effectiveImages.isNotEmpty)
                     PageView.builder(
@@ -419,8 +559,15 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                                     imgPath,
                                     fit: BoxFit.contain,
                                     errorBuilder: (_, __, ___) => const Center(
-                                      child: Icon(Icons.broken_image,
-                                          color: KuroTheme.textMuted, size: 48),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.broken_image, color: KuroTheme.crimson, size: 48),
+                                          SizedBox(height: 8),
+                                          Text('Página no disponible o no encontrada',
+                                              style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                        ],
+                                      ),
                                     ),
                                   ),
                           ),
@@ -454,43 +601,29 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                       onError: (error) {
                         debugPrint('PDF error: $error');
                       },
-                    )
-                  else
-                    // Fallback visualizer
-                    Container(
-                      color: _isSepia ? const Color(0xFFF4ECD8) : Colors.black,
-                      child: Center(
-                        child: Image.network(
-                          'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1000',
-                          fit: BoxFit.contain,
-                          color: _isSepia
-                              ? Colors.amber.withValues(alpha: 0.25)
-                              : null,
-                          colorBlendMode: BlendMode.multiply,
+                    ),
+
+                  // Mini thumbnail overlay: PANEL X / Y (solo si hay contenido cargado)
+                  if (!_isLoading && !_hasError && (_effectiveImages.isNotEmpty || _pdfPath != null))
+                    Positioned(
+                      bottom: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: KuroTheme.border),
+                        ),
+                        child: Text(
+                          'PÁGINA $_currentPage / $_totalPages',
+                          style: KuroTheme.mono(
+                              fontSize: 10.5,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800),
                         ),
                       ),
                     ),
-
-                  // Mini thumbnail overlay: PANEL X / Y
-                  Positioned(
-                    bottom: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: KuroTheme.border),
-                      ),
-                      child: Text(
-                        'PÁGINA $_currentPage / $_totalPages',
-                        style: KuroTheme.mono(
-                            fontSize: 10.5,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
