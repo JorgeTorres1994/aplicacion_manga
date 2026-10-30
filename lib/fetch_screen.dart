@@ -2,6 +2,8 @@ import 'package:aplicacion_manga/Screens/admin/admin_overview_screen.dart';
 import 'package:aplicacion_manga/Screens/admin_pagina_principal.dart';
 import 'package:aplicacion_manga/otros%20componentes/contss.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
+import 'package:aplicacion_manga/providers/viewed_providers.dart';
+import 'package:aplicacion_manga/providers/wishlist_providers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +32,17 @@ class _FetchScreenState extends State<FetchScreen> {
         final mangasProvider =
             Provider.of<MangasProvider>(context, listen: false);
         await mangasProvider.fetchMangas();
+
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          final wishListProvider =
+              Provider.of<WishListProvider>(context, listen: false);
+          wishListProvider.initWishlistSync(currentUser.uid);
+
+          final viewedProvider =
+              Provider.of<ViewedMangaProvider>(context, listen: false);
+          viewedProvider.initHistorySync(currentUser.uid);
+        }
 
         bool isUserAdmin = widget.isAdmin ?? false;
 

@@ -18,14 +18,23 @@ class MangasProvider with ChangeNotifier {
           await FirebaseFirestore.instance.collection('mangas').get();
 
       for (var element in mangaSnapshot.docs) {
+        final data = element.data();
         newMangasList.add(MangasModels(
-          id: element.get('id'),
-          title: element.get('title'),
-          imageUrl: element.get('imageUrl'),
-          mangaCategoryName: element.get('mangaCategoryName'),
-          type: element.get('type'),
-          numberPages: element.get('numberPages'),
-          pdfUrl: element.get('pdfUrl'),
+          id: (data['id'] != null && data['id'].toString().isNotEmpty)
+              ? data['id'].toString()
+              : element.id,
+          title: data['title']?.toString() ?? 'Sin título',
+          imageUrl: data['imageUrl']?.toString() ??
+              data['coverUrl']?.toString() ??
+              '',
+          mangaCategoryName: data['mangaCategoryName']?.toString() ??
+              data['category']?.toString() ??
+              'Shonen',
+          type: data['type']?.toString() ??
+              data['status']?.toString() ??
+              'MANGA',
+          numberPages: data['numberPages']?.toString() ?? '0',
+          pdfUrl: data['pdfUrl']?.toString() ?? '',
         ));
       }
 

@@ -2,6 +2,7 @@ import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
 import 'package:aplicacion_manga/providers/viewed_providers.dart';
 import 'package:aplicacion_manga/providers/wishlist_providers.dart';
+import 'package:aplicacion_manga/services/reader_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -57,36 +58,25 @@ class _MangaDetailsState extends State<MangaDetails> {
   }
 
   Future<void> _enviarComentario(String mangaId) async {
-    if (_commentController.text.trim().isEmpty) return;
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
 
     final user = FirebaseAuth.instance.currentUser;
-    final userName = user?.email?.split('@')[0] ?? 'Lector Nocturno';
+    final userName = user?.displayName?.isNotEmpty == true
+        ? user!.displayName!
+        : (user?.email?.split('@')[0] ?? 'Lector Nocturno');
 
     try {
-      await FirebaseFirestore.instance
-          .collection('mangas')
-          .doc(mangaId)
-          .collection('comments')
-          .add({
-        'autor': userName,
-        'comentario': _commentController.text.trim(),
-        'puntuacion': _userRating,
-        'fecha': FieldValue.serverTimestamp(),
-        'clan': 'CLAN CARMESÍ',
-      });
+      await KuroReaderBackendService.instance.addComment(
+        mangaId: mangaId,
+        uid: user?.uid ?? 'anonimo',
+        userName: userName,
+        avatar: user?.photoURL ?? '',
+        comentario: text,
+        rating: _userRating,
+      );
 
-      setState(() {
-        _comments.insert(0, {
-          'autor': userName,
-          'comentario': _commentController.text.trim(),
-          'puntuacion': _userRating,
-          'tiempo': 'Justo ahora',
-          'clan': 'CLAN CARMESÍ',
-          'likes': 1,
-        });
-        _commentController.clear();
-      });
-
+      _commentController.clear();
       Fluttertoast.showToast(msg: 'Comentario publicado');
     } catch (e) {
       Fluttertoast.showToast(msg: 'Error al publicar comentario: $e');
@@ -309,7 +299,10 @@ class _MangaDetailsState extends State<MangaDetails> {
                           MaterialPageRoute(
                             builder: (ctx) => OnlineViewScreen(
                               pdfUrl: currentManga.pdfUrl,
+                              mangaId: currentManga.id,
+                              coverUrl: currentManga.imageUrl,
                               mangaTitle: currentManga.title,
+                              chapterTitle: 'Capítulo 01',
                             ),
                           ),
                         );
@@ -883,29 +876,66 @@ class _MangaDetailsState extends State<MangaDetails> {
 
                     const SizedBox(height: 16),
 
-                    // User Review Cards (Matching Diseños 6)
-                    _buildReviewCard(
-                      avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
-                      userName: 'Valentin_Dragonslayer',
-                      clan: 'CLAN CARMESÍ',
-                      clanColor: KuroTheme.crimson,
-                      timeAgo: 'Hace 2 horas • Leyendo Cap. 384',
-                      comment: 'La doble página del capítulo 142 sigue siendo insuperable. La forma en que Miura maneja el entintado de la espada y la textura de la armadura no tiene comparación en toda la historia del manga. Releer esto en Kuro con resolución nativa es una experiencia casi religiosa.',
-                      likes: '428',
-                      replies: '34 respuestas',
-                    ),
+                    // Stream de Comentarios Reales de la Comunidad
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: KuroReaderBackendService.instance.streamComments(currentManga.id),
+                      builder: (context, snapshot) {
+                        final liveComments = snapshot.data ?? [];
 
-                    const SizedBox(height: 12),
+                        if (liveComments.isEmpty) {
+                          return Column(
+                            children: [
+                              _buildReviewCard(
+                                avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
+                                userName: 'Valentin_Dragonslayer',
+                                clan: 'CLAN CARMESÍ',
+                                clanColor: KuroTheme.crimson,
+                                timeAgo: 'Hace 2 horas • Leyendo',
+                                comment: 'La narrativa y el dibujo de esta obra son una verdadera obra de arte. Releer esto en Kuro con resolución nativa es una experiencia casi religiosa.',
+                                likes: '428',
+                                replies: '34 respuestas',
+                              ),
+                              const SizedBox(height: 12),
+                              _buildReviewCard(
+                                avatarUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
+                                userName: 'Noctis_Kuro',
+                                clan: 'CLAN SOMBRA',
+                                clanColor: KuroTheme.cardLighter,
+                                timeAgo: 'Ayer • Al día con la serie',
+                                comment: 'Comunidad activa recomendada al 100%. No duden en descargar los tomos para leerlos sin pausas en el modo inmersivo de Kuro.',
+                                likes: '215',
+                                replies: '12 respuestas',
+                              ),
+                            ],
+                          );
+                        }
 
-                    _buildReviewCard(
-                      avatarUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
-                      userName: 'Noctis_Kuro',
-                      clan: 'CLAN SOMBRA',
-                      clanColor: KuroTheme.cardLighter,
-                      timeAgo: 'Ayer • Al día con el manga',
-                      comment: 'Si vienes por el combate brutal te quedas por la profunda herida emocional de Guts y Casca. Es una tragedia griega dibujada con tinta divina. No duden en descargar los tomos para leerlos sin pausas en el modo inmersivo de Kuro.',
-                      likes: '215',
-                      replies: '12 respuestas',
+                        return ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: liveComments.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final c = liveComments[index];
+                            final autor = c['autor']?.toString() ?? 'Lector';
+                            final comentario = c['comentario']?.toString() ?? '';
+                            final clan = c['clan']?.toString() ?? 'CLAN CARMESÍ';
+                            final avatar = c['avatar']?.toString() ?? '';
+                            final likes = c['likes']?.toString() ?? '1';
+
+                            return _buildReviewCard(
+                              avatarUrl: avatar,
+                              userName: autor,
+                              clan: clan,
+                              clanColor: clan.contains('SOMBRA') ? KuroTheme.cardLighter : KuroTheme.crimson,
+                              timeAgo: 'Reciente • Verificado',
+                              comment: comentario,
+                              likes: likes,
+                              replies: '0 respuestas',
+                            );
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1029,8 +1059,11 @@ class _MangaDetailsState extends State<MangaDetails> {
               builder: (ctx) => OnlineViewScreen(
                 pdfUrl: targetPdf,
                 pageImages: pageImages,
+                mangaId: currentManga.id,
+                coverUrl: currentManga.imageUrl,
                 mangaTitle: '${currentManga.title} $num',
                 chapterTitle: title,
+                tomoTitle: tomo,
               ),
             ),
           );
@@ -1220,7 +1253,25 @@ class _MangaDetailsState extends State<MangaDetails> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
-                child: Image.network(avatarUrl, width: 28, height: 28, fit: BoxFit.cover),
+                child: avatarUrl.isNotEmpty
+                    ? Image.network(
+                        avatarUrl,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 28,
+                          height: 28,
+                          color: KuroTheme.crimson,
+                          child: const Icon(Icons.person, size: 16, color: Colors.white),
+                        ),
+                      )
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        color: KuroTheme.crimson,
+                        child: const Icon(Icons.person, size: 16, color: Colors.white),
+                      ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1292,7 +1343,18 @@ class _MangaDetailsState extends State<MangaDetails> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () async {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user != null) {
+                await KuroReaderBackendService.instance.rateManga(
+                  mangaId: mangaId,
+                  uid: user.uid,
+                  rating: _userRating,
+                );
+                Fluttertoast.showToast(msg: '¡Calificación registrada con éxito!');
+              }
+              Navigator.pop(ctx);
+            },
             child: Text('GUARDAR', style: KuroTheme.mono(fontSize: 12, color: KuroTheme.crimson)),
           ),
         ],

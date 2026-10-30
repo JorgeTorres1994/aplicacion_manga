@@ -3,6 +3,7 @@ import 'package:aplicacion_manga/inner_screens/manga_details.dart';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
 import 'package:aplicacion_manga/models/mangas_models.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
+import 'package:aplicacion_manga/services/reader_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -684,113 +685,184 @@ class _AdminPaginaInicioState extends State<AdminPaginaInicio> {
                 ),
               ),
 
-              // 7. Section "CONTINUAR LEYENDO"
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: KuroTheme.cardDecoration(
-                    color: KuroTheme.card,
-                    borderColor: KuroTheme.border,
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // 7. Section "CONTINUAR LEYENDO" (Sincronizado con Firestore)
+              StreamBuilder<Map<String, dynamic>?>(
+                stream: KuroReaderBackendService.instance.streamLatestReading(
+                    FirebaseAuth.instance.currentUser?.uid ?? ''),
+                builder: (context, snapshot) {
+                  final reading = snapshot.data;
+                  final hasReading = reading != null;
+
+                  final cover = hasReading
+                      ? (reading['coverUrl']?.toString() ?? '')
+                      : (allMangas.isNotEmpty ? allMangas.first.imageUrl : '');
+                  final title = hasReading
+                      ? (reading['mangaTitle']?.toString() ?? 'Manga')
+                      : (allMangas.isNotEmpty ? allMangas.first.title : 'Descubre Nuevos Mangas');
+                  final subtitle = hasReading
+                      ? '${reading['chapterTitle'] ?? 'Capítulo en progreso'}'
+                      : 'Comienza tu primera lectura en Kuro';
+                  final progress = hasReading
+                      ? ((reading['progressPercent'] as num?)?.toInt() ?? 10)
+                      : 0;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: KuroTheme.cardDecoration(
+                        color: KuroTheme.card,
+                        borderColor: KuroTheme.border,
+                      ),
+                      child: Column(
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Icon(Icons.history, color: KuroTheme.textGrey, size: 15),
-                              const SizedBox(width: 6),
-                              Text('CONTINUAR LEYENDO', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.textGrey)),
+                              Row(
+                                children: [
+                                  const Icon(Icons.history, color: KuroTheme.textGrey, size: 15),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    hasReading ? 'CONTINUAR LEYENDO' : 'LECTURA RECIENTE',
+                                    style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.textGrey),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                hasReading ? '$progress% LEÍDO' : 'SIN INICIAR',
+                                style: KuroTheme.mono(
+                                  fontSize: 9.5,
+                                  color: hasReading ? KuroTheme.crimson : KuroTheme.textMuted,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ],
                           ),
-                          Text('78% LEÍDO', style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              'https://cdn.shopify.com/s/files/1/0399/1833/8203/files/broly-dragon-ball_2048x2048.jpg?v=1616868885',
-                              width: 48,
-                              height: 60,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Berserk Souls: Eclipse...',
-                                  style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                                  maxLines: 1,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Capitulo 142: El Festín de...',
-                                  style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey),
-                                  maxLines: 1,
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  height: 3,
-                                  decoration: BoxDecoration(
-                                    color: KuroTheme.cardLighter,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 78,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: KuroTheme.crimson,
-                                            borderRadius: BorderRadius.circular(2),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: cover.isNotEmpty && cover.startsWith('http')
+                                    ? Image.network(
+                                        cover,
+                                        width: 48,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 48,
+                                          height: 60,
+                                          color: KuroTheme.cardLighter,
+                                          child: const Icon(Icons.menu_book, color: KuroTheme.textMuted),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 48,
+                                        height: 60,
+                                        color: KuroTheme.cardLighter,
+                                        child: const Icon(Icons.menu_book, color: KuroTheme.textMuted),
+                                      ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subtitle,
+                                      style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      height: 3,
+                                      decoration: BoxDecoration(
+                                        color: KuroTheme.cardLighter,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            flex: progress.clamp(1, 100),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: KuroTheme.crimson,
+                                                borderRadius: BorderRadius.circular(2),
+                                              ),
+                                            ),
                                           ),
+                                          Expanded(
+                                            flex: (100 - progress).clamp(0, 99),
+                                            child: const SizedBox(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  if (hasReading) {
+                                    final pages = (reading['pageImages'] as List?)
+                                        ?.map((e) => e.toString())
+                                        .toList();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (c) => OnlineViewScreen(
+                                          pdfUrl: reading['pdfUrl']?.toString() ?? '',
+                                          pageImages: pages,
+                                          mangaId: reading['mangaId']?.toString(),
+                                          coverUrl: reading['coverUrl']?.toString(),
+                                          mangaTitle: reading['mangaTitle']?.toString() ?? 'Manga',
+                                          chapterTitle: reading['chapterTitle']?.toString(),
+                                          tomoTitle: reading['tomoTitle']?.toString(),
                                         ),
                                       ),
-                                      const Expanded(flex: 22, child: SizedBox()),
-                                    ],
+                                    );
+                                  } else if (allMangas.isNotEmpty) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (c) => OnlineViewScreen(
+                                          pdfUrl: allMangas.first.pdfUrl,
+                                          mangaId: allMangas.first.id,
+                                          coverUrl: allMangas.first.imageUrl,
+                                          mangaTitle: allMangas.first.title,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: const BoxDecoration(
+                                    color: KuroTheme.crimson,
+                                    shape: BoxShape.circle,
                                   ),
+                                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              if (allMangas.isNotEmpty) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (c) => OnlineViewScreen(
-                                      pdfUrl: allMangas.first.pdfUrl,
-                                      mangaTitle: allMangas.first.title,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: const BoxDecoration(
-                                color: KuroTheme.crimson,
-                                shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
-                            ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
 
               const SizedBox(height: 24),

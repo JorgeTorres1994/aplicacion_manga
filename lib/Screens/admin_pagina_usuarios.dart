@@ -2,6 +2,7 @@ import 'package:aplicacion_manga/Screens/admin_pagina_config_usuario.dart';
 import 'package:aplicacion_manga/Screens/login_page.dart';
 import 'package:aplicacion_manga/Screens/wishlist/admin_wishlist_screen.dart';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
+import 'package:aplicacion_manga/services/reader_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,6 +24,7 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
   String _correo = 'ren.takahashi@kuro.manga';
   String _clan = 'CLAN CARMESÍ (黒鬼)';
   String _rango = 'VETERANO';
+  String _avatar = '';
   int _nivel = 42;
 
   @override
@@ -42,6 +44,7 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
           _nombre = doc.data()?['usuario'] ?? 'Ren Takahashi';
           _clan = 'CLAN ${(doc.data()?['clan'] ?? 'CARMESÍ').toString().toUpperCase()}';
           _rango = doc.data()?['rango'] ?? 'VETERANO';
+          _avatar = doc.data()?['avatar']?.toString() ?? '';
           _nivel = doc.data()?['nivel'] ?? 42;
         });
       }
@@ -145,12 +148,25 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
-                                child: Image.network(
-                                  'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
-                                  width: 64,
-                                  height: 64,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: _avatar.isNotEmpty && _avatar.startsWith('http')
+                                    ? Image.network(
+                                        _avatar,
+                                        width: 64,
+                                        height: 64,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 64,
+                                          height: 64,
+                                          color: const Color(0xFFF7728B),
+                                          child: const Icon(Icons.person, color: Colors.black, size: 28),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 64,
+                                        height: 64,
+                                        color: const Color(0xFFF7728B),
+                                        child: const Icon(Icons.person, color: Colors.black, size: 28),
+                                      ),
                               ),
                               Positioned(
                                 bottom: -6,
@@ -337,53 +353,84 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
 
               const SizedBox(height: 12),
 
-              _buildReadingCard(
-                badge: 'RAW',
-                badgeColor: KuroTheme.crimson,
-                title: 'BERSERK: SOULS',
-                timeAgo: 'Hace 2h',
-                chapter: 'Cap. 142: El Festín d...',
-                sub: 'Tomo 18 // Pág. 34 de 42',
-                progress: 0.82,
-                progressText: '82% completado',
-                extraText: 'Restan 4m',
-                imgUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
-              ),
-              _buildReadingCard(
-                badge: 'COLOR',
-                badgeColor: KuroTheme.purple,
-                title: 'CHAINSAW LEGACY',
-                timeAgo: 'Ayer',
-                chapter: 'Cap. 164: Fuego y M...',
-                sub: 'Arco del Demonio de Sangre',
-                progress: 0.45,
-                progressText: '45% completado',
-                extraText: 'Pág. 11/24',
-                imgUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
-              ),
-              _buildReadingCard(
-                badge: '✔',
-                badgeColor: KuroTheme.cyan,
-                title: 'TOKYO GHOUL: RE',
-                timeAgo: 'Hace 3 días',
-                chapter: 'Cap. 179: La Máscar...',
-                sub: 'Epílogo Completo',
-                progress: 1.0,
-                progressText: '100% Completado',
-                extraText: 'Releer',
-                imgUrl: 'https://cdn.shopify.com/s/files/1/0399/1833/8203/files/broly-dragon-ball_2048x2048.jpg?v=1616868885',
-              ),
-              _buildReadingCard(
-                badge: '',
-                badgeColor: Colors.transparent,
-                title: 'VAGABOND: KENSEI',
-                timeAgo: 'Hace 5 días',
-                chapter: 'Cap. 88: El Duelo del...',
-                sub: 'Volumen 11 // Kyoto Arc',
-                progress: 0.28,
-                progressText: '28% completado',
-                extraText: 'Pág. 7/25',
-                imgUrl: 'https://e.rpp-noticias.io/xlarge/2018/11/22/484448_715070.jpg',
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: KuroReaderBackendService.instance.streamReadingHistory(
+                    FirebaseAuth.instance.currentUser?.uid ?? ''),
+                builder: (context, snapshot) {
+                  final list = snapshot.data ?? [];
+                  if (list.isEmpty) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.all(24),
+                      decoration: KuroTheme.cardDecoration(),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(Icons.menu_book, color: KuroTheme.textMuted, size: 36),
+                            const SizedBox(height: 8),
+                            Text('Aún no tienes lecturas registradas',
+                                style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white)),
+                            const SizedBox(height: 4),
+                            Text('Explora mangas en el catálogo para iniciar tu progreso',
+                                style: KuroTheme.body(fontSize: 10, color: KuroTheme.textMuted)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: list.map((item) {
+                      final title = item['mangaTitle'] ?? 'Manga';
+                      final chapter = item['chapterTitle'] ?? 'Capítulo 1';
+                      final tomo = item['tomoTitle'] ?? 'Tomo 01';
+                      final progressInt =
+                          (item['progressPercent'] as num?)?.toInt() ?? 0;
+                      final double progress = (progressInt / 100.0).clamp(0.0, 1.0);
+                      final imgUrl = item['coverUrl'] ?? '';
+                      final pages = (item['pageImages'] as List?)
+                          ?.map((e) => e.toString())
+                          .toList();
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (c) => OnlineViewScreen(
+                                pdfUrl: item['pdfUrl'] ?? '',
+                                pageImages: pages,
+                                mangaId: item['mangaId'],
+                                coverUrl: imgUrl,
+                                mangaTitle: title,
+                                chapterTitle: chapter,
+                                tomoTitle: tomo,
+                              ),
+                            ),
+                          );
+                        },
+                        child: _buildReadingCard(
+                          badge: '$progressInt%',
+                          badgeColor:
+                              progress >= 1.0 ? KuroTheme.cyan : KuroTheme.crimson,
+                          title: title.toString().toUpperCase(),
+                          timeAgo: 'Sincronizado',
+                          chapter: chapter,
+                          sub: '$tomo // Pág. ${item['currentPage'] ?? 1} de ${item['totalPages'] ?? 1}',
+                          progress: progress,
+                          progressText: '$progressInt% completado',
+                          extraText: progress >= 1.0 ? 'Releer' : 'Continuar',
+                          imgUrl: imgUrl.isNotEmpty
+                              ? imgUrl
+                              : 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800',
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
               ),
 
               const SizedBox(height: 20),

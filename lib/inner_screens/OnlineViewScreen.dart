@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:aplicacion_manga/services/reader_service.dart';
 import 'package:aplicacion_manga/theme/kuro_theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -12,6 +14,9 @@ class OnlineViewScreen extends StatefulWidget {
   final String mangaTitle;
   final String? chapterTitle;
   final List<String>? pageImages;
+  final String? mangaId;
+  final String? coverUrl;
+  final String? tomoTitle;
 
   const OnlineViewScreen({
     super.key,
@@ -19,6 +24,9 @@ class OnlineViewScreen extends StatefulWidget {
     required this.mangaTitle,
     this.chapterTitle,
     this.pageImages,
+    this.mangaId,
+    this.coverUrl,
+    this.tomoTitle,
   });
 
   @override
@@ -223,6 +231,31 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
     setState(() => _currentPage = target);
   }
 
+  void _syncReadingProgress() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) {
+      KuroReaderBackendService.instance.saveReadingProgress(
+        uid: uid,
+        mangaId: widget.mangaId ?? widget.mangaTitle,
+        mangaTitle: widget.mangaTitle,
+        coverUrl: widget.coverUrl ?? '',
+        chapterTitle: widget.chapterTitle ?? 'Capítulo en Lectura',
+        tomoTitle: widget.tomoTitle,
+        currentPage: _currentPage,
+        totalPages: _totalPages > 0 ? _totalPages : 1,
+        pdfUrl: widget.pdfUrl,
+        pageImages: _effectiveImages.isNotEmpty ? _effectiveImages : widget.pageImages,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _syncReadingProgress();
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayChapter = widget.chapterTitle ?? 'Capítulo en Lectura';
@@ -369,6 +402,7 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                       itemCount: _effectiveImages.length,
                       onPageChanged: (idx) {
                         setState(() => _currentPage = idx + 1);
+                        _syncReadingProgress();
                       },
                       itemBuilder: (ctx, idx) {
                         final imgPath = _effectiveImages[idx];
@@ -415,6 +449,7 @@ class _OnlineViewScreenState extends State<OnlineViewScreen> {
                             _totalPages = total;
                           }
                         });
+                        _syncReadingProgress();
                       },
                       onError: (error) {
                         debugPrint('PDF error: $error');
