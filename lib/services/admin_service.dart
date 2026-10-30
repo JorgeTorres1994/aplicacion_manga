@@ -57,7 +57,7 @@ class KuroAdminBackendService {
         final mangasSnap = await fs.collection('mangas').get();
         final usersSnap = await fs.collection('users').get();
         final commentsSnap = await fs
-            .collection('comments')
+            .collection('comentarios')
             .where('reportado', isEqualTo: true)
             .get();
 
@@ -447,27 +447,28 @@ class KuroAdminBackendService {
       final fs = _safeFirestore;
       if (fs != null) {
         if (action == 'aprobar') {
-          await fs.collection('comments').doc(commentId).update({
+          await fs.collection('comentarios').doc(commentId).update({
             'reportado': false,
+            'estado': 'publicado',
             'estado_moderacion': 'APROBADO',
           });
         } else if (action == 'purgar') {
-          await fs.collection('comments').doc(commentId).delete();
+          await fs.collection('comentarios').doc(commentId).delete();
         } else if (action == 'tag_spoiler') {
-          await fs.collection('comments').doc(commentId).update({
+          await fs.collection('comentarios').doc(commentId).update({
             'isSpoiler': true,
             'reportado': false,
             'estado_moderacion': 'SPOILER_TAGGED',
           });
         } else if (action == 'sancionar' || action == 'ban') {
-          await fs.collection('comments').doc(commentId).update({
+          await fs.collection('comentarios').doc(commentId).update({
             'reportado': false,
             'estado_moderacion': 'SANCIONADO',
           });
           if (userEmail != null && userEmail.isNotEmpty) {
             final userQuery = await fs
                 .collection('users')
-                .where('email', isEqualTo: userEmail)
+                .where('correo', isEqualTo: userEmail)
                 .limit(1)
                 .get();
             if (userQuery.docs.isNotEmpty) {
@@ -488,7 +489,7 @@ class KuroAdminBackendService {
       final fs = _safeFirestore;
       if (fs != null) {
         final reportsSnap = await fs
-            .collection('comments')
+            .collection('comentarios')
             .where('reportado', isEqualTo: true)
             .get();
 
@@ -506,7 +507,56 @@ class KuroAdminBackendService {
         }
       }
     } catch (_) {}
-    return 14; // Cantidad resuelta en cola
+    return 0;
+  }
+
+  /// Limpia colecciones duplicadas/obsoletas ('comments', 'comentariosWeb')
+  /// unificando todo en 'comentarios' y eliminando campos repetidos en 'users'
+  Future<void> cleanupLegacyCollections() async {
+    final fs = _safeFirestore;
+    if (fs == null) return;
+    try {
+      // 1. Migrar y eliminar colección 'comments'
+      final commentsSnap = await fs.collection('comments').get();
+      for (final doc in commentsSnap.docs) {
+        final data = doc.data();
+        final existDoc = await fs.collection('comentarios').doc(doc.id).get();
+        if (!existDoc.exists) {
+          await fs.collection('comentarios').doc(doc.id).set(data);
+        }
+        await doc.reference.delete();
+      }
+
+      // 2. Migrar y eliminar colección 'comentariosWeb'
+      final webSnap = await fs.collection('comentariosWeb').get();
+      for (final doc in webSnap.docs) {
+        final data = doc.data();
+        final existDoc = await fs.collection('comentarios').doc(doc.id).get();
+        if (!existDoc.exists) {
+          await fs.collection('comentarios').doc(doc.id).set(data);
+        }
+        await doc.reference.delete();
+      }
+
+      // 3. Limpiar campos duplicados (email/telefono) en la colección 'users'
+      final usersSnap = await fs.collection('users').get();
+      for (final uDoc in usersSnap.docs) {
+        final uData = uDoc.data();
+        final cleanup = <String, dynamic>{};
+        if (uData.containsKey('email')) cleanup['email'] = FieldValue.delete();
+        if (uData.containsKey('telefono')) {
+          if (uData['celular'] == null || uData['celular'] == '+51 987654321') {
+            cleanup['celular'] = uData['telefono'];
+          }
+          cleanup['telefono'] = FieldValue.delete();
+        }
+        if (cleanup.isNotEmpty) {
+          await uDoc.reference.update(cleanup);
+        }
+      }
+    } catch (e) {
+      debugPrint('Aviso en cleanupLegacyCollections: $e');
+    }
   }
 
   // ====================================================

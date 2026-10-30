@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
 import 'package:aplicacion_manga/providers/viewed_providers.dart';
@@ -31,10 +32,174 @@ class _MangaDetailsState extends State<MangaDetails> {
   String? _selectedFilterTomo;
   bool _sortDescending = false;
 
+  String _userNombre = 'Lector';
+  String _userRol = 'reader';
+  String _userAvatar = '';
+  String _userClan = 'CLAN CARMESÍ';
+  String _userRango = 'LECTOR REGULAR';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatosUsuario();
+  }
+
+  Future<void> _cargarDatosUsuario() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data() != null && mounted) {
+          final data = doc.data()!;
+          setState(() {
+            _userNombre = data['usuario'] ?? user.displayName ?? (user.email?.split('@')[0] ?? 'Lector');
+            _userRol = data['rol'] ?? 'reader';
+            _userAvatar = data['avatar'] ?? '';
+            _userClan = data['clan'] ?? 'CLAN CARMESÍ';
+            _userRango = data['rango'] ?? (_userRol == 'admin' ? 'ROOT ADMIN' : 'LECTOR REGULAR');
+          });
+        }
+      } catch (_) {}
+    }
+  }
+
   @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  void _mostrarDialogoSinCapitulos(BuildContext context, String title) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: KuroTheme.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: KuroTheme.crimson.withValues(alpha: 0.5)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: KuroTheme.crimson.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.menu_book, color: KuroTheme.crimson, size: 30),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'CAPÍTULO NO DISPONIBLE',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Aún no se ha subido ningún capítulo para "$title".\nEl administrador debe publicar los tomos o capítulos desde Kuro Admin Suite.',
+                textAlign: TextAlign.center,
+                style: KuroTheme.body(fontSize: 11.5, color: KuroTheme.textGrey, height: 1.45),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: KuroTheme.crimson,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'ENTENDIDO',
+                    style: KuroTheme.mono(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _iniciarLectura(BuildContext context, dynamic currentManga) async {
+    final viewedProvider = Provider.of<ViewedMangaProvider>(context, listen: false);
+    viewedProvider.addMangasToHistory(mangaId: currentManga.id);
+
+    try {
+      final capsSnap = await FirebaseFirestore.instance
+          .collection('mangas')
+          .doc(currentManga.id)
+          .collection('capitulos')
+          .orderBy('numero', descending: false)
+          .get();
+
+      if (capsSnap.docs.isNotEmpty) {
+        final firstCap = capsSnap.docs.first.data();
+        final paginas = (firstCap['paginas'] as List?)
+                ?.map((e) => e.toString().trim())
+                .where((s) => s.isNotEmpty)
+                .toList() ??
+            [];
+        final pdf = (firstCap['pdfUrl']?.toString() ?? '').trim();
+        final capNombre = firstCap['nombre']?.toString() ??
+            'Capítulo ${firstCap['numero'] ?? '01'}';
+        final tomo = firstCap['tomo']?.toString() ?? 'Tomo 01';
+
+        if (paginas.isNotEmpty || (pdf.isNotEmpty && (pdf.startsWith('http') || File(pdf).existsSync()))) {
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (ctx) => OnlineViewScreen(
+                pdfUrl: pdf.isNotEmpty ? pdf : paginas.first,
+                pageImages: paginas.isNotEmpty ? paginas : null,
+                mangaId: currentManga.id,
+                coverUrl: currentManga.imageUrl,
+                mangaTitle: '${currentManga.title} - $capNombre',
+                chapterTitle: capNombre,
+                tomoTitle: tomo,
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      final rawPdf = (currentManga.pdfUrl as String? ?? '').trim();
+      if (rawPdf.isNotEmpty && (rawPdf.startsWith('http') || File(rawPdf).existsSync())) {
+        if (!context.mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) => OnlineViewScreen(
+              pdfUrl: rawPdf,
+              mangaId: currentManga.id,
+              coverUrl: currentManga.imageUrl,
+              mangaTitle: currentManga.title,
+              chapterTitle: 'Tomo Principal / Obra Completa',
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (!context.mounted) return;
+      _mostrarDialogoSinCapitulos(context, currentManga.title);
+    } catch (e) {
+      if (!context.mounted) return;
+      _mostrarDialogoSinCapitulos(context, currentManga.title);
+    }
   }
 
   void _downloadPDF(String pdfUrl, String title) async {
@@ -57,27 +222,33 @@ class _MangaDetailsState extends State<MangaDetails> {
     }
   }
 
-  Future<void> _enviarComentario(String mangaId) async {
+  Future<void> _enviarComentario(String mangaId, String mangaTitle) async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
     final user = FirebaseAuth.instance.currentUser;
-    final userName = user?.displayName?.isNotEmpty == true
-        ? user!.displayName!
-        : (user?.email?.split('@')[0] ?? 'Lector Nocturno');
+    final uid = user?.uid ?? 'anonimo';
 
     try {
       await KuroReaderBackendService.instance.addComment(
         mangaId: mangaId,
-        uid: user?.uid ?? 'anonimo',
-        userName: userName,
-        avatar: user?.photoURL ?? '',
+        mangaTitle: mangaTitle,
+        uid: uid,
+        userName: _userNombre,
+        avatar: _userAvatar,
+        rol: _userRol,
+        rango: _userRango,
+        clan: _userClan,
         comentario: text,
         rating: _userRating,
       );
 
       _commentController.clear();
-      Fluttertoast.showToast(msg: 'Comentario publicado');
+      Fluttertoast.showToast(
+        msg: 'Comentario publicado en la comunidad',
+        backgroundColor: KuroTheme.crimson,
+        textColor: Colors.white,
+      );
     } catch (e) {
       Fluttertoast.showToast(msg: 'Error al publicar comentario: $e');
     }
@@ -310,21 +481,7 @@ class _MangaDetailsState extends State<MangaDetails> {
                   Expanded(
                     flex: 6,
                     child: GestureDetector(
-                      onTap: () {
-                        viewedProvider.addMangasToHistory(mangaId: currentManga.id);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (ctx) => OnlineViewScreen(
-                              pdfUrl: currentManga.pdfUrl,
-                              mangaId: currentManga.id,
-                              coverUrl: currentManga.imageUrl,
-                              mangaTitle: currentManga.title,
-                              chapterTitle: 'Capítulo 01',
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: () => _iniciarLectura(context, currentManga),
                       child: Container(
                         height: 48,
                         decoration: BoxDecoration(
@@ -535,12 +692,18 @@ class _MangaDetailsState extends State<MangaDetails> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: KuroTheme.border),
                         ),
-                        child: Row(
-                          children: [
-                            _buildTabButton('Capítulos ($totalCaps)', 0),
-                            _buildTabButton('Tomos ($totalTomos)', 1),
-                            _buildTabButton('Comunidad (${_comments.length + 2})', 2),
-                          ],
+                        child: StreamBuilder<List<Map<String, dynamic>>>(
+                          stream: KuroReaderBackendService.instance.streamComments(currentManga.id),
+                          builder: (context, cSnap) {
+                            final commentCount = cSnap.data?.length ?? 0;
+                            return Row(
+                              children: [
+                                _buildTabButton('Capítulos ($totalCaps)', 0),
+                                _buildTabButton('Tomos ($totalTomos)', 1),
+                                _buildTabButton('Comunidad ($commentCount)', 2),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     );
@@ -650,13 +813,22 @@ class _MangaDetailsState extends State<MangaDetails> {
                   }
 
                   if (filteredDocs.isEmpty) {
-                    if (currentManga.pdfUrl.isNotEmpty && _selectedFilterTomo == null) {
+                    final rawPdf = currentManga.pdfUrl.trim();
+                    final hasValidPdf = rawPdf.isNotEmpty &&
+                        (rawPdf.startsWith('http://') ||
+                         rawPdf.startsWith('https://') ||
+                         File(rawPdf).existsSync());
+
+                    if (hasValidPdf && _selectedFilterTomo == null) {
+                      final pagesDisplay = (currentManga.numberPages.isNotEmpty && currentManga.numberPages != '0')
+                          ? '${currentManga.numberPages} Páginas'
+                          : 'Obra Completa';
                       return Column(
                         children: [
                           _buildChapterItem(
                             '#01',
                             'Capítulo Principal / Obra Completa',
-                            'Lectura original integrada • 42 Páginas',
+                            'Lectura original integrada • $pagesDisplay',
                             isDownloaded: false,
                             currentManga: currentManga,
                             pdfUrl: currentManga.pdfUrl,
@@ -666,16 +838,31 @@ class _MangaDetailsState extends State<MangaDetails> {
                     }
 
                     return Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                       child: Center(
                         child: Column(
                           children: [
-                            const Icon(Icons.menu_book, color: KuroTheme.textMuted, size: 36),
-                            const SizedBox(height: 8),
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: KuroTheme.crimson.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: KuroTheme.crimson.withValues(alpha: 0.3)),
+                              ),
+                              child: const Icon(Icons.menu_book, color: KuroTheme.crimson, size: 24),
+                            ),
+                            const SizedBox(height: 12),
                             Text(
                               _selectedFilterTomo != null
-                                  ? 'No hay capítulos en $_selectedFilterTomo'
-                                  : 'Aún no hay capítulos publicados para esta serie',
+                                  ? 'NO HAY CAPÍTULOS EN $_selectedFilterTomo'
+                                  : 'AÚN NO HAY CAPÍTULOS PUBLICADOS',
+                              style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.6),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'El manga aún no tiene capítulos cargados por el administrador.',
+                              textAlign: TextAlign.center,
                               style: KuroTheme.body(fontSize: 11, color: KuroTheme.textMuted),
                             ),
                           ],
@@ -869,11 +1056,31 @@ class _MangaDetailsState extends State<MangaDetails> {
                           width: 24,
                           height: 24,
                           decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle),
-                          child: Center(child: Text('KU', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800))),
+                          clipBehavior: Clip.antiAlias,
+                          child: _userAvatar.isNotEmpty
+                              ? (_userAvatar.startsWith('http')
+                                  ? Image.network(_userAvatar, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Text(_userNombre.isNotEmpty ? _userNombre[0].toUpperCase() : 'U', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800))))
+                                  : Image.file(File(_userAvatar), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Text(_userNombre.isNotEmpty ? _userNombre[0].toUpperCase() : 'U', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)))))
+                              : Center(child: Text(_userNombre.isNotEmpty ? _userNombre[0].toUpperCase() : 'U', style: KuroTheme.mono(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800))),
                         ),
                         const SizedBox(width: 8),
                         Text('Comentar como ', style: KuroTheme.body(fontSize: 11, color: KuroTheme.textGrey)),
-                        Text('Lector Nocturno', style: KuroTheme.mono(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
+                        Text(_userNombre, style: KuroTheme.mono(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
+                        if (_userRol == 'admin') ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: KuroTheme.crimson.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: KuroTheme.crimson.withValues(alpha: 0.5)),
+                            ),
+                            child: Text(
+                              'ADMIN',
+                              style: KuroTheme.mono(fontSize: 8, color: KuroTheme.crimson, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -889,13 +1096,13 @@ class _MangaDetailsState extends State<MangaDetails> {
                               style: KuroTheme.body(color: Colors.white, fontSize: 12),
                               decoration: InputDecoration(
                                 border: InputBorder.none,
-                                hintText: 'Escribe tu teoría o comentario sobre el tomo...',
+                                hintText: 'Escribe tu teoría o comentario sobre la obra...',
                                 hintStyle: KuroTheme.body(color: KuroTheme.textMuted, fontSize: 11),
                               ),
                             ),
                           ),
                           GestureDetector(
-                            onTap: () => _enviarComentario(mangaId),
+                            onTap: () => _enviarComentario(mangaId, currentManga.title),
                             child: Container(
                               width: 30,
                               height: 30,
@@ -949,13 +1156,17 @@ class _MangaDetailsState extends State<MangaDetails> {
                             final comentario = c['comentario']?.toString() ?? '';
                             final clan = c['clan']?.toString() ?? 'CLAN CARMESÍ';
                             final avatar = c['avatar']?.toString() ?? '';
-                            final likes = c['likes']?.toString() ?? '1';
+                            final likes = c['likes']?.toString() ?? '0';
+                            final rol = c['rol']?.toString() ?? 'reader';
 
                             return _buildReviewCard(
                               avatarUrl: avatar,
                               userName: autor,
                               clan: clan,
-                              clanColor: clan.contains('SOMBRA') ? KuroTheme.cardLighter : KuroTheme.crimson,
+                              rol: rol,
+                              clanColor: rol == 'admin'
+                                  ? KuroTheme.crimson
+                                  : (clan.contains('SOMBRA') ? KuroTheme.cardLighter : KuroTheme.crimson),
                               timeAgo: 'Reciente • Verificado',
                               comment: comentario,
                               likes: likes,
@@ -1261,6 +1472,7 @@ class _MangaDetailsState extends State<MangaDetails> {
     required String avatarUrl,
     required String userName,
     required String clan,
+    String? rol,
     required Color clanColor,
     required String timeAgo,
     required String comment,
@@ -1282,18 +1494,31 @@ class _MangaDetailsState extends State<MangaDetails> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: avatarUrl.isNotEmpty
-                    ? Image.network(
-                        avatarUrl,
-                        width: 28,
-                        height: 28,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 28,
-                          height: 28,
-                          color: KuroTheme.crimson,
-                          child: const Icon(Icons.person, size: 16, color: Colors.white),
-                        ),
-                      )
+                    ? (avatarUrl.startsWith('http')
+                        ? Image.network(
+                            avatarUrl,
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 28,
+                              height: 28,
+                              color: KuroTheme.crimson,
+                              child: const Icon(Icons.person, size: 16, color: Colors.white),
+                            ),
+                          )
+                        : Image.file(
+                            File(avatarUrl),
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 28,
+                              height: 28,
+                              color: KuroTheme.crimson,
+                              child: const Icon(Icons.person, size: 16, color: Colors.white),
+                            ),
+                          ))
                     : Container(
                         width: 28,
                         height: 28,
@@ -1309,12 +1534,25 @@ class _MangaDetailsState extends State<MangaDetails> {
                     Row(
                       children: [
                         Text(userName, style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(color: clanColor.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(3)),
-                          child: Text(clan, style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w700)),
-                        ),
+                        if (rol == 'admin') ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: KuroTheme.crimson.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(3),
+                              border: Border.all(color: KuroTheme.crimson.withValues(alpha: 0.6)),
+                            ),
+                            child: Text('ADMIN', style: KuroTheme.mono(fontSize: 7.5, color: KuroTheme.crimson, fontWeight: FontWeight.w800)),
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(color: clanColor.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(3)),
+                            child: Text(clan, style: KuroTheme.mono(fontSize: 7.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
                       ],
                     ),
                     Text(timeAgo, style: KuroTheme.mono(fontSize: 8, color: KuroTheme.textMuted)),

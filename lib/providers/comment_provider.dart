@@ -22,7 +22,7 @@ class CommentProvider extends ChangeNotifier {
   }*/
 
   Future<void> fetchCommentsFromFirebase() async {
-    final commentsRef = FirebaseFirestore.instance.collection('comments');
+    final commentsRef = FirebaseFirestore.instance.collection('comentarios');
 
     commentsRef.snapshots().listen((commentsSnapshot) {
       _comments = commentsSnapshot.docs.map((doc) => doc.data()).toList();
@@ -35,12 +35,16 @@ class CommentProvider extends ChangeNotifier {
         _comments.indexWhere((comment) => comment['id'] == commentId);
 
     if (commentIndex != -1) {
+      _comments[commentIndex]['comentario'] = newContent;
       _comments[commentIndex]['contenido'] = newContent;
       notifyListeners();
 
-      // Actualiza el comentario en Firestore si es necesario
-      final commentsRef = FirebaseFirestore.instance.collection('comments');
-      await commentsRef.doc(commentId).update({'contenido': newContent});
+      // Actualiza el comentario en la colección única 'comentarios'
+      final commentsRef = FirebaseFirestore.instance.collection('comentarios');
+      await commentsRef.doc(commentId).update({
+        'comentario': newContent,
+        'contenido': newContent,
+      });
     }
   }
 

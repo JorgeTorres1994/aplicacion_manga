@@ -4,6 +4,7 @@ import 'package:aplicacion_manga/otros%20componentes/contss.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
 import 'package:aplicacion_manga/providers/viewed_providers.dart';
 import 'package:aplicacion_manga/providers/wishlist_providers.dart';
+import 'package:aplicacion_manga/services/admin_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,9 @@ class _FetchScreenState extends State<FetchScreen> {
   void initState() {
     super.initState();
     images.shuffle();
+
+    // Limpieza y unificación automática en segundo plano
+    KuroAdminBackendService.instance.cleanupLegacyCollections();
 
     Future.delayed(const Duration(milliseconds: 900), () async {
       try {

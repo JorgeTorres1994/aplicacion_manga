@@ -281,32 +281,58 @@ class KuroReaderBackendService {
   // 4. COMUNIDAD Y COMENTARIOS
   // ====================================================
 
-  /// Publica un comentario en el manga
+  /// Publica un comentario en la colección raíz unificada 'comentarios'
   Future<void> addComment({
     required String mangaId,
+    String? mangaTitle,
     required String uid,
     required String userName,
     required String comentario,
     double? rating,
     String? avatar,
+    String? rol,
+    String? rango,
     String? clan,
   }) async {
     try {
       final fs = _safeFirestore;
       if (fs == null || mangaId.isEmpty) return;
 
-      await fs
-          .collection('mangas')
-          .doc(mangaId)
-          .collection('comments')
-          .add({
+      String userRole = rol ?? 'reader';
+      String userRango = rango ?? 'Lector Regular';
+      String userClan = clan ?? 'CLAN CARMESÍ';
+      String userAvatar = avatar ?? '';
+
+      if (uid.isNotEmpty) {
+        try {
+          final uDoc = await fs.collection('users').doc(uid).get();
+          if (uDoc.exists && uDoc.data() != null) {
+            final uData = uDoc.data()!;
+            userRole = uData['rol']?.toString() ?? userRole;
+            userRango = uData['rango']?.toString() ?? userRango;
+            userClan = uData['clan']?.toString() ?? userClan;
+            if (userAvatar.isEmpty) {
+              userAvatar = uData['avatar']?.toString() ?? '';
+            }
+          }
+        } catch (_) {}
+      }
+
+      await fs.collection('comentarios').add({
+        'mangaId': mangaId,
+        'mangaTitle': mangaTitle ?? '',
         'userId': uid,
         'autor': userName,
-        'avatar': avatar ?? '',
+        'avatar': userAvatar,
+        'rol': userRole,
+        'rango': userRango,
+        'clan': userClan,
         'comentario': comentario,
         'puntuacion': rating ?? 5.0,
-        'clan': clan ?? 'CLAN CARMESÍ',
         'likes': 0,
+        'reportado': false,
+        'estado': 'publicado',
+        'reportsCount': 0,
         'fecha': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -314,7 +340,7 @@ class KuroReaderBackendService {
     }
   }
 
-  /// Stream en vivo de comentarios de un manga
+  /// Stream en vivo de comentarios de un manga desde la colección unificada 'comentarios'
   Stream<List<Map<String, dynamic>>> streamComments(String mangaId) {
     final fs = _safeFirestore;
     if (fs == null || mangaId.isEmpty) {
@@ -322,16 +348,24 @@ class KuroReaderBackendService {
     }
 
     return fs
-        .collection('mangas')
-        .doc(mangaId)
-        .collection('comments')
-        .orderBy('fecha', descending: true)
+        .collection('comentarios')
+        .where('mangaId', isEqualTo: mangaId)
         .snapshots()
-        .map((snap) => snap.docs.map((d) {
-              final data = d.data();
-              data['id'] = d.id;
-              return data;
-            }).toList());
+        .map((snap) {
+      final list = snap.docs.map((d) {
+        final data = d.data();
+        data['id'] = d.id;
+        return data;
+      }).toList();
+
+      list.sort((a, b) {
+        final aDate = (a['fecha'] as Timestamp?)?.toDate() ?? DateTime(2000);
+        final bDate = (b['fecha'] as Timestamp?)?.toDate() ?? DateTime(2000);
+        return bDate.compareTo(aDate);
+      });
+
+      return list;
+    });
   }
 
   // ====================================================

@@ -34,7 +34,7 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
   void _cargarReportes() async {
     try {
       final snap = await FirebaseFirestore.instance
-          .collection('comments')
+          .collection('comentarios')
           .where('reportado', isEqualTo: true)
           .get();
 
@@ -42,20 +42,21 @@ class _KuroAdminModerationScreenState extends State<KuroAdminModerationScreen> {
         setState(() {
           _reports = snap.docs.map((doc) {
             final data = doc.data();
+            final userStr = data['autor'] ?? data['usuario'] ?? 'usuario_anonimo';
             return {
               'docId': doc.id,
               'manga': data['mangaTitle'] ?? 'Manga en Catálogo',
               'cap': data['capitulo'] ?? 'Capítulo',
               'badge': data['motivo'] ?? 'SPOILER / REPORTE',
               'badgeColor': KuroTheme.crimson,
-              'user': data['usuario'] ?? 'usuario_anonimo',
+              'user': userStr,
               'lvl': data['rango'] ?? 'LECTOR',
-              'tag': '@${data['usuario'] ?? 'usuario'} • Hace unos momentos',
+              'tag': '@$userStr • Hace unos momentos',
               'extraBadge': 'Reportado por Lectores',
               'warning': (data['motivo'] ?? 'VIOLACIÓN TÉRMINOS COMUNIDAD')
                   .toString()
                   .toUpperCase(),
-              'text': data['contenido'] ?? '(Comentario vacío)',
+              'text': data['comentario'] ?? data['contenido'] ?? '(Comentario vacío)',
               'actions': ['Tag Spoiler', 'SANCIONAR', 'APROBAR'],
             };
           }).toList();
