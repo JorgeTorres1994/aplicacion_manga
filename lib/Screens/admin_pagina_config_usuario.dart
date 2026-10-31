@@ -196,7 +196,7 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                       'fecha_actualizacion': FieldValue.serverTimestamp(),
                     }, SetOptions(merge: true));
                   }
-                  Fluttertoast.showToast(msg: 'Acento cromático ${_acentoNombre} activado');
+                  Fluttertoast.showToast(msg: 'Acento cromático $_acentoNombre activado');
                 },
               );
             }).toList(),
@@ -224,9 +224,22 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(titulo,
-                      style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                  Expanded(
+                    child: Text(
+                      titulo,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     icon: const Icon(Icons.close, color: KuroTheme.textGrey, size: 18),
                     onPressed: () => Navigator.pop(ctx),
                   ),
@@ -437,7 +450,8 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               subtitle: _isOledMode ? 'Negro Absoluto (#000000)' : 'Modo Oscuro Carbón (#090A0E)',
               trailing: Switch(
                 value: _isOledMode,
-                activeColor: _acentoColor,
+                activeThumbColor: _acentoColor,
+                activeTrackColor: _acentoColor.withValues(alpha: 0.5),
                 onChanged: (val) {
                   setState(() => _isOledMode = val);
                   Fluttertoast.showToast(
@@ -483,7 +497,8 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
               subtitle: _komaContrast ? 'Realce dinámico activo' : 'Tramas estándar',
               trailing: Switch(
                 value: _komaContrast,
-                activeColor: _acentoColor,
+                activeThumbColor: _acentoColor,
+                activeTrackColor: _acentoColor.withValues(alpha: 0.5),
                 onChanged: (val) {
                   setState(() => _komaContrast = val);
                   Fluttertoast.showToast(
@@ -554,7 +569,7 @@ class _AdminPaginaConfigUsuarioState extends State<AdminPaginaConfigUsuario> {
                       Text('ESPACIO EN DISCO UTILIZADO',
                           style: KuroTheme.mono(
                               fontSize: 8.5, color: KuroTheme.textMuted)),
-                      Text('${(_cacheUsedMB > 0 ? ((_cacheUsedMB / 200) * 100).clamp(1.0, 95.0).toStringAsFixed(1) : 0.0)}%',
+                      Text('${(_cacheUsedMB > 0 ? ((_cacheUsedMB / 200) * 100).clamp(1.0, 95.0) : 0.0).toStringAsFixed(1)}%',
                           style: KuroTheme.mono(
                               fontSize: 9,
                               color: KuroTheme.textWhite,
