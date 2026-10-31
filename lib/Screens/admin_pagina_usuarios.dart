@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:aplicacion_manga/Screens/admin_pagina_config_usuario.dart';
+import 'package:aplicacion_manga/Screens/components/edit_reader_profile_sheet.dart';
 import 'package:aplicacion_manga/Screens/login_page.dart';
 import 'package:aplicacion_manga/Screens/wishlist/admin_wishlist_screen.dart';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
@@ -8,6 +10,7 @@ import 'package:aplicacion_manga/theme/kuro_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -21,12 +24,14 @@ class AdminPaginaUsuarios extends StatefulWidget {
 class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
   int _selectedTab = 0; // 0: Historial, 1: Mi Biblioteca
   bool _alertasPush = true;
-  String _nombre = 'Ren Takahashi';
-  String _usuario = '@takahashi_kuro';
-  String _correo = 'ren.takahashi@kuro.manga';
+  String _nombre = 'Kenji Reader';
+  String _usuario = '@kenji_reader';
+  String _correo = 'lector@kuro.manga';
   String _clan = 'CLAN CARMESÍ (黒鬼)';
   String _rango = 'VETERANO';
   String _avatar = '';
+  String _celular = '+51 952336505';
+  String _bio = 'Lector devoto de manga oscuro y seinen.';
   int _nivel = 42;
 
   @override
@@ -39,18 +44,55 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (doc.exists) {
+      if (doc.exists && mounted) {
+        final data = doc.data() ?? {};
         setState(() {
           _correo = user.email ?? _correo;
-          _usuario = '@${doc.data()?['usuario'] ?? user.email?.split('@')[0]}';
-          _nombre = doc.data()?['usuario'] ?? 'Ren Takahashi';
-          _clan = 'CLAN ${(doc.data()?['clan'] ?? 'CARMESÍ').toString().toUpperCase()}';
-          _rango = doc.data()?['rango'] ?? 'VETERANO';
-          _avatar = doc.data()?['avatar']?.toString() ?? '';
-          _nivel = doc.data()?['nivel'] ?? 42;
+          _usuario = '@${data['usuario'] != null ? data['usuario'].toString().toLowerCase().replaceAll(' ', '_') : user.email?.split('@')[0]}';
+          _nombre = data['usuario'] ?? 'Kenji Reader';
+          _clan = data['clan'] != null ? data['clan'].toString() : 'CLAN CARMESÍ (黒鬼)';
+          _rango = data['rango'] ?? 'VETERANO';
+          _avatar = data['avatar']?.toString() ?? '';
+          _celular = data['celular']?.toString() ?? '';
+          _bio = data['bio']?.toString() ?? '';
+          _nivel = data['nivel'] ?? 42;
         });
       }
     }
+  }
+
+  void _abrirModalEditarPerfil() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => EditReaderProfileSheet(
+        initialName: _nombre,
+        initialPhone: _celular,
+        initialClan: _clan,
+        initialAvatar: _avatar,
+        initialBio: _bio,
+        onProfileUpdated: (name, phone, clan, avatar, bio) {
+          setState(() {
+            _nombre = name;
+            _usuario = '@${name.toLowerCase().replaceAll(' ', '_')}';
+            _celular = phone;
+            _clan = clan;
+            _avatar = avatar;
+            _bio = bio;
+          });
+        },
+      ),
+    );
+  }
+
+  Color _getClanColor(String clanStr) {
+    final lower = clanStr.toLowerCase();
+    if (lower.contains('sombra')) return KuroTheme.purple;
+    if (lower.contains('ciber')) return KuroTheme.cyan;
+    if (lower.contains('oro')) return KuroTheme.gold;
+    if (lower.contains('vac')) return KuroTheme.textGrey;
+    return KuroTheme.crimson;
   }
 
   void _cerrarSesion() async {
@@ -145,50 +187,78 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
                     children: [
                       Row(
                         children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: _avatar.isNotEmpty && _avatar.startsWith('http')
-                                    ? Image.network(
-                                        _avatar,
-                                        width: 64,
-                                        height: 64,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
+                          GestureDetector(
+                            onTap: _abrirModalEditarPerfil,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: _avatar.isNotEmpty
+                                      ? (_avatar.startsWith('http')
+                                          ? Image.network(
+                                              _avatar,
+                                              width: 64,
+                                              height: 64,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                width: 64,
+                                                height: 64,
+                                                color: KuroTheme.cardLighter,
+                                                child: const Icon(Icons.person, color: Colors.white, size: 28),
+                                              ),
+                                            )
+                                          : Image.file(
+                                              File(_avatar),
+                                              width: 64,
+                                              height: 64,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                width: 64,
+                                                height: 64,
+                                                color: KuroTheme.cardLighter,
+                                                child: const Icon(Icons.person, color: Colors.white, size: 28),
+                                              ),
+                                            ))
+                                      : Container(
                                           width: 64,
                                           height: 64,
                                           color: const Color(0xFFF7728B),
                                           child: const Icon(Icons.person, color: Colors.black, size: 28),
                                         ),
-                                      )
-                                    : Container(
-                                        width: 64,
-                                        height: 64,
-                                        color: const Color(0xFFF7728B),
-                                        child: const Icon(Icons.person, color: Colors.black, size: 28),
+                                ),
+                                Positioned(
+                                  bottom: -6,
+                                  left: 6,
+                                  right: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: KuroTheme.crimson,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '🔥 LV.$_nivel',
+                                        style: KuroTheme.mono(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w800),
                                       ),
-                              ),
-                              Positioned(
-                                bottom: -6,
-                                left: 6,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-                                  decoration: BoxDecoration(
-                                    color: KuroTheme.crimson,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '🔥 LV.$_nivel',
-                                      style: KuroTheme.mono(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w800),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                                Positioned(
+                                  top: -4,
+                                  right: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: const BoxDecoration(
+                                      color: KuroTheme.crimson,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.edit, color: Colors.white, size: 10),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -197,9 +267,13 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
                               children: [
                                 Row(
                                   children: [
-                                    Text(
-                                      _nombre,
-                                      style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                                    Expanded(
+                                      child: Text(
+                                        _nombre,
+                                        style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
                                     const SizedBox(width: 4),
                                     const Icon(Icons.verified, color: KuroTheme.cyan, size: 16),
@@ -207,18 +281,21 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
                                 ),
                                 Text(_usuario, style: KuroTheme.mono(fontSize: 10.5, color: KuroTheme.crimson, fontWeight: FontWeight.w700)),
                                 Text(_correo, style: KuroTheme.mono(fontSize: 9.5, color: KuroTheme.textMuted)),
+                                if (_celular.isNotEmpty)
+                                  Text('📱 $_celular', style: KuroTheme.mono(fontSize: 9, color: KuroTheme.cyan)),
                               ],
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.tune, color: KuroTheme.textGrey, size: 20),
                             onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (c) => const AdminPaginaConfigUsuario()));
+                              Navigator.push(context, MaterialPageRoute(builder: (c) => const AdminPaginaConfigUsuario()))
+                                  .then((_) => _cargarDatosUsuario());
                             },
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
@@ -230,13 +307,52 @@ class _AdminPaginaUsuariosState extends State<AdminPaginaUsuarios> {
                           children: [
                             Row(
                               children: [
-                                Container(width: 5, height: 5, decoration: const BoxDecoration(color: KuroTheme.crimson, shape: BoxShape.circle)),
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: _getClanColor(_clan),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
                                 const SizedBox(width: 6),
-                                Text('RANGO OTAKU // $_clan', style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textGrey, fontWeight: FontWeight.w700)),
+                                Text('RANGO OTAKU // $_clan',
+                                    style: KuroTheme.mono(fontSize: 8.5, color: KuroTheme.textGrey, fontWeight: FontWeight.w700)),
                               ],
                             ),
                             Text(_rango, style: KuroTheme.mono(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w800)),
                           ],
+                        ),
+                      ),
+                      if (_bio.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '"$_bio"',
+                          style: KuroTheme.body(fontSize: 10.5, color: KuroTheme.textGrey),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: _abrirModalEditarPerfil,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                          decoration: BoxDecoration(
+                            color: _getClanColor(_clan).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: _getClanColor(_clan).withValues(alpha: 0.45)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.edit, size: 13, color: _getClanColor(_clan)),
+                              const SizedBox(width: 8),
+                              Text(
+                                'EDITAR PERFIL, FOTO Y CLAN',
+                                style: KuroTheme.mono(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.w800),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
