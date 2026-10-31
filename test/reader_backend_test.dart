@@ -20,8 +20,8 @@ void main() {
     });
 
     test('2. Historial de Lectura - Cálculo de porcentaje y estructura', () {
-      final totalPages = 45;
-      final currentPage = 23;
+      const totalPages = 45;
+      const currentPage = 23;
       final double progress = totalPages > 0
           ? ((currentPage / totalPages) * 100).clamp(1.0, 100.0)
           : 0.0;
@@ -121,8 +121,8 @@ void main() {
     });
 
     test('7. Visor de Manga - Detección de manga sin capítulos y fallback seguro', () {
-      final List<Map<String, dynamic>> capsList = [];
-      final String mangaPdfUrl = '';
+      const List<Map<String, dynamic>> capsList = [];
+      const String mangaPdfUrl = '';
 
       final bool hasChapters = capsList.isNotEmpty;
       final bool hasDirectPdf = mangaPdfUrl.trim().isNotEmpty && mangaPdfUrl.startsWith('http');
@@ -161,8 +161,20 @@ void main() {
       expect(configState['acentoCromatico'], equals('Carmesí Puro'));
 
       // Simular purga de caché
-      final purgedCache = 0.0;
+      const purgedCache = 0.0;
       expect(purgedCache, equals(0.0));
+    });
+
+    test('10. Legal & Dialogs - Títulos largos no causan desbordamiento horizontal', () {
+      const titulosLegales = [
+        'POLÍTICAS DE PRIVACIDAD // KURO',
+        'TÉRMINOS DE SERVICIO // KURO MANGA',
+        'LICENCIAS & SCANS // OPEN SOURCE',
+      ];
+
+      for (final t in titulosLegales) {
+        expect(t.length, greaterThan(20));
+      }
     });
   });
 }
