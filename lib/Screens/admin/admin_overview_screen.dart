@@ -2832,6 +2832,10 @@ class _KuroAdminOverviewScreenState extends State<KuroAdminOverviewScreen> {
                                   ),
                                 ),
                               );
+                            } else {
+                              Fluttertoast.showToast(
+                                msg: 'Este capítulo aún no tiene páginas o PDF asignado. Usa "+ CAP" para subirlo.',
+                              );
                             }
                           },
                           leading: Container(
