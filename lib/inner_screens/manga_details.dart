@@ -25,7 +25,6 @@ class MangaDetails extends StatefulWidget {
 
 class _MangaDetailsState extends State<MangaDetails> {
   final TextEditingController _commentController = TextEditingController();
-  final List<Map<String, dynamic>> _comments = [];
   bool _isExpandedSynopsis = false;
   int _selectedTab = 0; // 0: Capítulos, 1: Tomos, 2: Comunidad
   double _userRating = 5.0;
@@ -262,8 +261,6 @@ class _MangaDetailsState extends State<MangaDetails> {
 
     final wishlistProvider = Provider.of<WishListProvider>(context);
     final isInWishlist = wishlistProvider.getWishListItems.containsKey(mangaId);
-
-    final viewedProvider = Provider.of<ViewedMangaProvider>(context);
 
     return Scaffold(
       backgroundColor: KuroTheme.background,

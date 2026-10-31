@@ -1,7 +1,6 @@
 import 'package:aplicacion_manga/Screens/admin/admin_overview_screen.dart';
 import 'package:aplicacion_manga/inner_screens/manga_details.dart';
 import 'package:aplicacion_manga/inner_screens/OnlineViewScreen.dart';
-import 'package:aplicacion_manga/models/mangas_models.dart';
 import 'package:aplicacion_manga/providers/mangas_providers.dart';
 import 'package:aplicacion_manga/providers/wishlist_providers.dart';
 import 'package:aplicacion_manga/services/reader_service.dart';
