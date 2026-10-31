@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 class KuroReaderBackendService {
@@ -404,6 +406,108 @@ class KuroReaderBackendService {
       };
     } catch (_) {
       return {'mangasLeidos': 0, 'favoritosCount': 0, 'nivel': 42};
+    }
+  }
+
+  // ====================================================
+  // 6. PERFIL DEL LECTOR (EDICIÓN Y ACTUALIZACIÓN)
+  // ====================================================
+
+  /// Carga datos del perfil de un lector desde Firestore
+  Future<Map<String, dynamic>?> loadReaderProfile(String uid) async {
+    try {
+      final fs = _safeFirestore;
+      if (fs == null || uid.isEmpty) return null;
+      final doc = await fs.collection('users').doc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        return doc.data();
+      }
+    } catch (e) {
+      debugPrint('Error cargando perfil de lector: $e');
+    }
+    return null;
+  }
+
+  /// Guarda y actualiza los datos del lector en la colección 'users'
+  Future<bool> saveReaderProfile({
+    required String uid,
+    required String nombre,
+    required String celular,
+    required String clan,
+    String? bio,
+    String? avatar,
+    String? colorAcento,
+  }) async {
+    try {
+      final fs = _safeFirestore;
+      if (fs == null || uid.isEmpty) return false;
+
+      final updateMap = <String, dynamic>{
+        'usuario': nombre.trim(),
+        'celular': celular.trim(),
+        'clan': clan.trim(),
+        'bio': (bio ?? 'Lector de Manga').trim(),
+        'fecha_actualizacion': FieldValue.serverTimestamp(),
+      };
+
+      if (avatar != null && avatar.isNotEmpty) {
+        updateMap['avatar'] = avatar.trim();
+      }
+      if (colorAcento != null && colorAcento.isNotEmpty) {
+        updateMap['colorAcento'] = colorAcento.trim();
+      }
+
+      // Eliminar posibles campos duplicados obsoletos
+      updateMap['email'] = FieldValue.delete();
+      updateMap['telefono'] = FieldValue.delete();
+
+      await fs.collection('users').doc(uid).set(updateMap, SetOptions(merge: true));
+
+      final authUser = _safeAuth?.currentUser;
+      if (authUser != null) {
+        if (nombre.trim().isNotEmpty) {
+          await authUser.updateDisplayName(nombre.trim()).catchError((_) {});
+        }
+        if (avatar != null && avatar.trim().isNotEmpty && avatar.startsWith('http')) {
+          await authUser.updatePhotoURL(avatar.trim()).catchError((_) {});
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error guardando perfil de lector: $e');
+      return false;
+    }
+  }
+
+  /// Sube una foto de perfil para el lector a Firebase Storage y la guarda en users
+  Future<String?> uploadReaderAvatar({
+    required String uid,
+    required File imageFile,
+  }) async {
+    try {
+      final storage = FirebaseStorage.instance;
+      final fileName = 'reader_${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref = storage.ref().child('usuarios_avatares').child(fileName);
+      await ref.putFile(imageFile);
+      final downloadUrl = await ref.getDownloadURL();
+
+      final fs = _safeFirestore;
+      if (fs != null && uid.isNotEmpty) {
+        await fs.collection('users').doc(uid).set({
+          'avatar': downloadUrl,
+          'fecha_actualizacion': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      final authUser = _safeAuth?.currentUser;
+      if (authUser != null) {
+        await authUser.updatePhotoURL(downloadUrl).catchError((_) {});
+      }
+
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('Error subiendo avatar de lector: $e');
+      return null;
     }
   }
 }
