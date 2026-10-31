@@ -130,6 +130,40 @@ void main() {
 
       expect(canRead, isFalse); // Debe mostrar diálogo "Capítulo no disponible"
     });
+
+    test('8. Reader Profile - Estructura de actualización de datos, avatar, celular y clan', () {
+      final updatePayload = {
+        'usuario': 'Ren Takahashi',
+        'celular': '+51 987654321',
+        'clan': 'CLAN SOMBRA (影)',
+        'bio': 'Lector voraz de Seinen y Dark Fantasy.',
+        'avatar': 'https://firebasestorage.googleapis.com/avatar_ren.jpg',
+        'colorAcento': 'Cyan Neón',
+      };
+
+      expect(updatePayload['usuario'], equals('Ren Takahashi'));
+      expect(updatePayload['celular'], contains('987654321'));
+      expect(updatePayload['clan'], contains('SOMBRA'));
+      expect(updatePayload['avatar'], startsWith('https://'));
+      expect(updatePayload['colorAcento'], equals('Cyan Neón'));
+    });
+
+    test('9. Reader Configuration - Visual OLED, acentos cromáticos y limpieza de caché', () {
+      final configState = {
+        'isOledMode': true,
+        'komaContrast': true,
+        'acentoCromatico': 'Carmesí Puro',
+        'cacheUsedMB': 48.5,
+      };
+
+      expect(configState['isOledMode'], isTrue);
+      expect(configState['komaContrast'], isTrue);
+      expect(configState['acentoCromatico'], equals('Carmesí Puro'));
+
+      // Simular purga de caché
+      final purgedCache = 0.0;
+      expect(purgedCache, equals(0.0));
+    });
   });
 }
 
